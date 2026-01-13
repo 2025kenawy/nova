@@ -1,0 +1,9 @@
+{
+  "name": "Nova - Intelligence Sales Platform",
+  "description": "A high-performance sales intelligence platform inspired by Apollo, featuring AI-powered prospecting, lead enrichment, and CRM integration using Gemini API.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

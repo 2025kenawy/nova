@@ -1,55 +1,31 @@
 
+import { createClient } from '@supabase/supabase-js';
+
 /**
- * Nova Supabase Client (Personal Implementation)
+ * Nova Supabase Infrastructure
+ * 
+ * Securely connects to the Sovereign Horse Database.
+ * The 'sbp_' key provided is used as the default fallback for the connection.
  */
 
-// Simulated Supabase persistence using localStorage
-const getStore = (table: string) => JSON.parse(localStorage.getItem(`nova_${table}`) || '[]');
-const setStore = (table: string, data: any[]) => localStorage.setItem(`nova_${table}`, JSON.stringify(data));
+const supabaseUrl = process.env.SUPABASE_URL || 'https://vclvwyquzpvpzvzvzvzv.supabase.co'; // Example project URL
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'sbp_583feb2efe11e0434956b7436d94a173f5c9c1a0';
 
-export const supabase = {
-  from: (table: string) => ({
-    select: () => ({
-      order: (col: string, { ascending = false } = {}) => ({
-        limit: (n: number) => {
-          const data = getStore(table);
-          return Promise.resolve({ data: data.slice(0, n), error: null });
-        }
-      }),
-      eq: (col: string, val: any) => {
-        const data = getStore(table).filter((r: any) => r[col] === val);
-        return Promise.resolve({ data, error: null });
-      }
-    }),
-    insert: (newData: any) => {
-      const data = getStore(table);
-      const rows = Array.isArray(newData) ? newData : [newData];
-      const updated = [...rows, ...data];
-      setStore(table, updated);
-      return Promise.resolve({ data: updated, error: null });
-    },
-    update: (updates: any) => ({
-      eq: (col: string, val: any) => {
-        const data = getStore(table);
-        const updated = data.map((r: any) => r[col] === val ? { ...r, ...updates } : r);
-        setStore(table, updated);
-        return Promise.resolve({ data: updated, error: null });
-      }
-    }),
-    delete: () => ({
-      eq: (col: string, val: any) => {
-        const data = getStore(table);
-        const updated = data.filter((r: any) => r[col] !== val);
-        setStore(table, updated);
-        return Promise.resolve({ data: updated, error: null });
-      }
-    })
-  }),
+const isConfigured = !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY;
+
+if (!isConfigured && !supabaseAnonKey.startsWith('sbp_')) {
+  console.warn(
+    "Nova Intelligence: Supabase credentials missing. " +
+    "Market intelligence will be stored in local volatile memory for this session."
+  );
+}
+
+// Initialize Supabase Client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    getUser: () => Promise.resolve({ data: { user: { email: 'nova@personal.use' } }, error: null }),
-    signIn: () => Promise.resolve({ data: {}, error: null }),
-    signOut: () => Promise.resolve({ error: null })
+    persistSession: true,
+    autoRefreshToken: true,
   }
-};
+});
 
 export default supabase;

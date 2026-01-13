@@ -18,30 +18,23 @@ export type HorseCategory =
   | 'None';
 
 export type HorseSubCategory = 
-  // Core Operations
   | 'Private Stable' | 'Professional Training Stable' | 'Racing Stable' | 'Endurance Stable' | 'Show Jumping Stable'
   | 'Breeding Farm' | 'Stud Farm' | 'Young Horse Farm' | 'Rehabilitation Farm'
   | 'Flat Racing' | 'Endurance Racing' | 'Camel-Horse Facility'
   | 'Riding School' | 'Competition Center' | 'Polo Club' | 'Show Jumping Arena'
-  // Health
   | 'Equine Hospital' | 'Mobile Equine Vet' | 'Gov Veterinary Unit'
   | 'Nutrition Consultant' | 'Performance Advisor' | 'Rehab Specialist'
   | 'Blood Testing Lab' | 'Doping Control' | 'Performance Analysis Lab'
-  // Supply
   | 'Feed Distributor' | 'Supplement Importer' | 'Vet Product Distributor'
   | 'Feed Manufacturer' | 'Supplement Producer' | 'Equipment Producer'
   | 'Tack Shop' | 'Feed Store' | 'Online Equine Shop'
-  // Gov/Elite
   | 'National Stud' | 'Gov Breeding Program' | 'Police/Military Stable'
   | 'Royal Stable' | 'Private Family Operation' | 'Heritage Breeding Center'
-  // Services
   | 'Horse Transport' | 'International Shipping' | 'Quarantine Service'
   | 'Stable Builder' | 'Flooring/Ventilation Specialist' | 'Water/Feeding Systems'
   | 'Grooming Service' | 'Farrier' | 'Dental Specialist'
-  // Competition
   | 'Racing Event' | 'Endurance Competition' | 'Horse Show'
   | 'Professional Trainer' | 'Performance Coach'
-  // Media
   | 'Equestrian Federation' | 'Racing Authority'
   | 'Horse Magazine' | 'Social Media Influencer' | 'Industry Reporter'
   | 'None';
@@ -60,6 +53,13 @@ export interface UserIdentity {
   email: string;
   phone: string;
   location: string;
+}
+
+export interface LeadScoring {
+  authority: number;
+  intent: number;
+  engagement: number;
+  overall: number;
 }
 
 export interface Company {
@@ -93,14 +93,27 @@ export interface Lead {
   companyName: string;
   email: string;
   linkedin: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
   status: 'New' | 'Contacted' | 'Replied' | 'Enriched';
   dealStage: DealStage;
   horseCategory?: HorseCategory;
   horseSubCategory?: HorseSubCategory;
   isSaved?: boolean;
+  scoring?: LeadScoring;
 }
 
-// Added MemoryEntry interface to fix import errors in components and services
+export interface Mission {
+  contactName: string;
+  role: string;
+  company: string;
+  priority: 'High' | 'Medium';
+  explanation: string;
+  confidence: number;
+  recommendedAction: string;
+}
+
 export interface MemoryEntry {
   id: string;
   entityId: string;

@@ -20,19 +20,6 @@ import CrmDetail from './components/CrmDetail';
 import ExpoLanding from './components/ExpoLanding';
 import CrmList from './components/CrmList';
 
-// Add global type declarations for AI Studio environment
-// Use AIStudio interface name to match global expectations and resolve modifier conflicts
-interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
-declare global {
-  interface Window {
-    readonly aistudio: AIStudio;
-  }
-}
-
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>(ViewType.NOVA_BRIEF);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -44,6 +31,7 @@ const App: React.FC = () => {
   }, []);
 
   const checkActivation = async () => {
+    // Relying on global window.aistudio provided by the environment context
     if (window.aistudio) {
       const active = await window.aistudio.hasSelectedApiKey();
       setIsActivated(active);

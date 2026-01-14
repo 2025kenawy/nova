@@ -4,7 +4,7 @@ import {
   ArrowLeft, Linkedin, Mail, Phone, Globe, Calendar, Clock, Sparkles, 
   CheckCircle2, Ban, History, StickyNote, Target, Zap, ChevronRight,
   ShieldCheck, MoreHorizontal, User, Thermometer, Bell, Plus, X, Trash2,
-  Ticket
+  Ticket, MessageCircle, Shield
 } from 'lucide-react';
 import { Lead, MemoryEntry, RelationshipTemperature, Reminder } from '../types';
 import { leadService } from '../services/leadService';
@@ -19,6 +19,8 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const [lead, setLead] = useState<Lead | null>(null);
   const [timeline, setTimeline] = useState<MemoryEntry[]>([]);
   const [notes, setNotes] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappPermission, setWhatsappPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddReminder, setShowAddReminder] = useState(false);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
@@ -35,6 +37,8 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
       if (data) {
         setLead(data);
         setNotes(data.notes || '');
+        setWhatsappNumber(data.whatsapp || '');
+        setWhatsappPermission(data.whatsappPermission || false);
         setTimeline(history);
       }
       setIsLoading(false);
@@ -45,6 +49,26 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const handleSaveNotes = async () => {
     if (!lead) return;
     await leadService.updateLeadNotes(leadId, notes);
+  };
+
+  const handleSaveWhatsApp = async () => {
+    if (!lead) return;
+    await leadService.updateLeadWhatsApp(leadId, whatsappNumber, whatsappPermission);
+    
+    await saveMemory({
+      entityId: leadId,
+      type: 'action',
+      content: `Updated WhatsApp details: ${whatsappNumber}. Permission: ${whatsappPermission ? 'GRANTED' : 'REVOKED'}.`
+    });
+    
+    const history = await getMemoriesForEntity(leadId);
+    setTimeline(history);
+  };
+
+  const startWhatsApp = () => {
+    if (!whatsappNumber) return;
+    const sanitized = whatsappNumber.replace(/\D/g, '');
+    window.open(`https://wa.me/${sanitized}`, '_blank');
   };
 
   const handleAction = async (action: 'done' | 'snooze' | 'ignore') => {
@@ -181,6 +205,15 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
           </div>
           
           <div className="flex flex-wrap gap-2">
+            {whatsappNumber && (
+              <button 
+                onClick={startWhatsApp}
+                className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 hover:bg-[#25D366] hover:text-white transition-all shadow-sm flex items-center gap-2 px-4"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">WhatsApp Chat</span>
+              </button>
+            )}
             {lead.linkedin && (
               <a href={formatUrl(lead.linkedin)} target="_blank" className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-all shadow-sm">
                 <Linkedin className="w-5 h-5" />
@@ -192,11 +225,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
             <button className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-all shadow-sm">
               <Phone className="w-5 h-5" />
             </button>
-            {lead.companyDomain && (
-              <a href={formatUrl(lead.companyDomain)} target="_blank" className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-all shadow-sm">
-                <Globe className="w-5 h-5" />
-              </a>
-            )}
           </div>
         </div>
       </div>
@@ -247,6 +275,54 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
               <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase">
                 <Clock className="w-4 h-4 text-slate-300" />
                 {timeline.length > 0 ? new Date(timeline[timeline.length - 1].timestamp).toLocaleDateString() : 'N/A'}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION WHATSAPP MANAGEMENT */}
+          <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Communication Channels</h3>
+              </div>
+              <button 
+                onClick={handleSaveWhatsApp}
+                className="text-[9px] font-black uppercase text-indigo-600 hover:underline"
+              >
+                Save Details
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">WhatsApp Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <input 
+                    type="text"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    placeholder="+971 00 000 0000"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Compliance Status</label>
+                <button 
+                  onClick={() => setWhatsappPermission(!whatsappPermission)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${whatsappPermission ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Shield className={`w-4 h-4 ${whatsappPermission ? 'text-emerald-500' : 'text-slate-300'}`} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Chat Permission</span>
+                  </div>
+                  <div className={`w-10 h-5 rounded-full relative transition-all ${whatsappPermission ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${whatsappPermission ? 'right-1' : 'left-1'}`} />
+                  </div>
+                </button>
               </div>
             </div>
           </div>

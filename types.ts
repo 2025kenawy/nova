@@ -5,7 +5,9 @@ export type DealStage =
   | 'Trial' 
   | 'Supply discussion' 
   | 'Closing / Contract' 
-  | 'None';
+  | 'None'
+  | 'Saved'
+  | 'Strategic'; // Added Strategic stage
 
 export type HorseCategory = 
   | 'Core Operations'      // Stables, Farms, Racing, Clubs
@@ -139,16 +141,21 @@ export interface Lead {
   temperature?: RelationshipTemperature;
   source?: string;
   reminders?: Reminder[];
+  relationship_stage?: string;
+  saved_at?: string;
+  strategic_intent?: string; // New: capture mission explanation
+  nova_confidence?: number; // New: capture mission confidence
 }
 
 export interface Mission {
   contactName: string;
   role: string;
   company: string;
-  priority: 'High' | 'Medium';
+  priority: 'High' | 'Medium' | 'Critical';
   explanation: string;
   confidence: number;
   recommendedAction: string;
+  isSaved?: boolean; // New: track UI state
 }
 
 export interface MemoryEntry {

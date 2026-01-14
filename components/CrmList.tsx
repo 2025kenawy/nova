@@ -4,7 +4,7 @@ import {
   Users, Loader2, Search, Filter, Mail, Phone, 
   Linkedin, ExternalLink, Globe, MoreHorizontal,
   ChevronRight, Thermometer, Calendar, Target,
-  Star, MessageSquare
+  Star, MessageSquare, MessageCircle
 } from 'lucide-react';
 import { Lead, RelationshipTemperature } from '../types';
 import { leadService } from '../services/leadService';
@@ -42,6 +42,13 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
     c.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.companyName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const startWhatsApp = (e: React.MouseEvent, whatsapp?: string) => {
+    e.stopPropagation();
+    if (!whatsapp) return;
+    const sanitized = whatsapp.replace(/\D/g, '');
+    window.open(`https://wa.me/${sanitized}`, '_blank');
+  };
 
   return (
     <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500">
@@ -124,6 +131,15 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
                   View Dossier <ChevronRight className="w-3.5 h-3.5" />
                 </button>
                 <div className="flex items-center gap-1">
+                  {contact.whatsapp && (
+                    <button 
+                      onClick={(e) => startWhatsApp(e, contact.whatsapp)}
+                      className="p-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl hover:bg-[#25D366] hover:text-white transition-all shadow-sm"
+                      title="Start WhatsApp Chat"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  )}
                   <div className="p-3 bg-slate-50 text-slate-400 border border-slate-200 rounded-xl hover:text-indigo-600 hover:bg-white transition-all">
                     <Mail className="w-4 h-4" />
                   </div>

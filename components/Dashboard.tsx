@@ -4,20 +4,24 @@ import {
   Radar, BrainCircuit, 
   Loader2, X, ChevronRight, CheckCircle2,
   Activity, BadgeDollarSign, ShieldCheck, Calendar,
-  Send, Check, ShieldAlert, Target, Rocket
+  Send, Check, ShieldAlert, Target, Rocket, Save, BellPlus,
+  Sparkles
 } from 'lucide-react';
 import { novaOrchestrator } from '../services/novaOrchestrator';
 import { WALID_IDENTITY } from '../services/identityService';
 import { Mission } from '../types';
+import { leadService } from '../services/leadService';
 
 interface MissionCardProps {
   mission: Mission;
   onExecute: (m: Mission) => void | Promise<void>;
+  onSave: (m: Mission, withReminder: boolean) => Promise<void>;
+  isSaving?: boolean;
 }
 
-const MissionCard: React.FC<MissionCardProps> = ({ mission, onExecute }) => {
+const MissionCard: React.FC<MissionCardProps> = ({ mission, onExecute, onSave, isSaving }) => {
   return (
-    <div className="group border border-slate-200 bg-white rounded-[2.5rem] p-8 transition-all hover:shadow-2xl hover:-translate-y-1">
+    <div className="group border border-slate-200 bg-white rounded-[2.5rem] p-8 transition-all hover:shadow-2xl hover:-translate-y-1 relative">
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-center gap-5">
           <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center font-black text-indigo-400 border border-white/10 shadow-xl overflow-hidden text-xl">
@@ -28,8 +32,16 @@ const MissionCard: React.FC<MissionCardProps> = ({ mission, onExecute }) => {
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{mission.role} • <span className="text-indigo-600">{mission.company}</span></p>
           </div>
         </div>
-        <div className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100">
-          <span className="text-[8px] font-black uppercase tracking-widest text-indigo-600">{mission.priority}</span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100">
+            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-600">{mission.priority}</span>
+          </div>
+          {mission.isSaved && (
+             <div className="flex items-center gap-1.5 text-emerald-600 animate-in fade-in slide-in-from-right-2">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span className="text-[8px] font-black uppercase tracking-widest">In CRM</span>
+             </div>
+          )}
         </div>
       </div>
 
@@ -42,22 +54,45 @@ const MissionCard: React.FC<MissionCardProps> = ({ mission, onExecute }) => {
           <p className="text-xs font-medium text-slate-600 leading-relaxed italic">"{mission.explanation}"</p>
         </div>
 
-        <div className="flex items-center justify-between">
-           <div>
+        <div className="flex items-center justify-between gap-4">
+           <div className="flex-1">
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Nova Confidence</span>
               <div className="flex items-center gap-2">
-                 <div className="h-1 w-16 bg-slate-100 rounded-full overflow-hidden">
+                 <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500" style={{ width: `${mission.confidence}%` }} />
                  </div>
                  <span className="text-[9px] font-black text-indigo-600">{mission.confidence}%</span>
               </div>
            </div>
-           <button 
-             onClick={() => onExecute(mission)}
-             className="px-8 py-3.5 bg-slate-900 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95 flex items-center gap-2"
-           >
-             Analyze <ChevronRight className="w-3.5 h-3.5" />
-           </button>
+           
+           <div className="flex items-center gap-2">
+             {!mission.isSaved && (
+               <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => onSave(mission, false)}
+                    disabled={isSaving}
+                    title="Save to CRM"
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  </button>
+                  <button 
+                    onClick={() => onSave(mission, true)}
+                    disabled={isSaving}
+                    title="Save + Set Reminder"
+                    className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellPlus className="w-4 h-4" />}
+                  </button>
+               </div>
+             )}
+             <button 
+               onClick={() => onExecute(mission)}
+               className="px-6 py-3 bg-slate-900 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95 flex items-center gap-2 whitespace-nowrap"
+             >
+               Analyze <ChevronRight className="w-3.5 h-3.5" />
+             </button>
+           </div>
         </div>
       </div>
     </div>
@@ -69,6 +104,8 @@ const Dashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [savingMissionName, setSavingMissionName] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [executionResult, setExecutionResult] = useState<{ mission: Mission; response: string } | null>(null);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const pollInterval = useRef<number | null>(null);
@@ -94,8 +131,20 @@ const Dashboard: React.FC = () => {
 
   const loadSavedMissions = async () => {
     const results = await novaOrchestrator.getDailyCommands();
+    const crmContacts = await leadService.getCrmContacts();
+    
     if (results && results.length > 0) {
-      setMissions(results);
+      // Cross-reference with CRM to check saved status
+      const augmentedMissions = results.map(m => {
+        const nameParts = m.contactName.split(' ');
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ');
+        const isSaved = crmContacts.some(c => 
+          c.firstName === firstName && c.lastName === (lastName || '(Mission)') && c.companyName === m.company
+        );
+        return { ...m, isSaved };
+      });
+      setMissions(augmentedMissions);
     }
   };
 
@@ -111,6 +160,21 @@ const Dashboard: React.FC = () => {
     const response = await novaOrchestrator.generateOutreach(mission);
     setExecutionResult({ mission, response });
     setIsExecuting(false);
+  };
+
+  const handleSaveToCrm = async (mission: Mission, withReminder: boolean) => {
+    setSavingMissionName(mission.contactName);
+    const success = await leadService.promoteMissionToCrm(mission, withReminder);
+    
+    if (success) {
+      setFeedback({ 
+        message: withReminder ? "Mission saved with follow-up reminder." : "Mission saved to CRM vault.", 
+        type: 'success' 
+      });
+      setTimeout(() => setFeedback(null), 3000);
+      loadSavedMissions(); // Refresh status
+    }
+    setSavingMissionName(null);
   };
 
   const handleSendEmail = async () => {
@@ -138,7 +202,17 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-12 h-full max-w-5xl mx-auto pb-20 animate-in fade-in duration-1000">
+    <div className="space-y-12 h-full max-w-5xl mx-auto pb-20 animate-in fade-in duration-1000 relative">
+      {/* Toast Feedback */}
+      {feedback && (
+        <div className="fixed top-24 right-10 z-[110] animate-in slide-in-from-right-4 fade-in">
+          <div className={`px-6 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 ${feedback.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
+            {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+            <span className="text-[10px] font-black uppercase tracking-widest">{feedback.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-end justify-between border-b border-slate-200 pb-10">
         <div>
           <div className="flex items-center gap-4 mb-3">
@@ -184,7 +258,15 @@ const Dashboard: React.FC = () => {
 
         {missions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {missions.map((m, i) => <MissionCard key={i} mission={m} onExecute={handleExecuteMission} />)}
+            {missions.map((m, i) => (
+              <MissionCard 
+                key={i} 
+                mission={m} 
+                onExecute={handleExecuteMission} 
+                onSave={handleSaveToCrm}
+                isSaving={savingMissionName === m.contactName}
+              />
+            ))}
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-[3rem] p-24 text-center flex flex-col items-center gap-6 shadow-sm">

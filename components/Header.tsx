@@ -1,9 +1,13 @@
 
 import React from 'react';
-import { Search, Bell, ExternalLink } from 'lucide-react';
+import { Search, Bell, ExternalLink, RotateCcw, ShieldCheck } from 'lucide-react';
 import { WALID_IDENTITY } from '../services/identityService';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    onResetKey?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onResetKey }) => {
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-10">
       <div className="flex-1 max-w-2xl relative">
@@ -20,6 +24,15 @@ const Header: React.FC = () => {
            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Nova Secure</span>
         </div>
+        
+        <button 
+            onClick={onResetKey}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all group"
+            title="Update API Key"
+        >
+          <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+        </button>
+
         <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-indigo-600 border-2 border-white rounded-full"></span>

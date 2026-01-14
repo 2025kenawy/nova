@@ -1,10 +1,11 @@
 
 import * as ai from './aiService';
 import { evaluateRelationshipSafety } from './decisionEngine';
-import { Mission } from '../types';
+import { Mission, EquineEvent } from '../types';
 import { saveMemory, getMemoryContext, getAllMemories, getMemoriesForEntity } from './memoryService';
 import { getIdentityContext } from './identityService';
 import { leadService } from './leadService';
+import { eventService } from './eventService';
 
 export const novaOrchestrator = {
   _isRefreshing: false,
@@ -28,6 +29,15 @@ export const novaOrchestrator = {
         this._isRefreshing = false;
       }
     })();
+  },
+
+  async discoverArabMarketEvents(year: number = 2026): Promise<EquineEvent[]> {
+    const identity = getIdentityContext();
+    const events = await ai.serverDiscoverEquineEvents(year, identity);
+    if (events.length > 0) {
+      await eventService.bulkSaveEvents(events);
+    }
+    return events;
   },
 
   async precomputeDailyMissions(): Promise<void> {
@@ -75,7 +85,6 @@ export const novaOrchestrator = {
   },
 
   async sendEmail(to: string, rawResponse: string, contactName: string): Promise<boolean> {
-    // Truncated for brevity...
     return true;
   }
 };

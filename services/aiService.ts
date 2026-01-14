@@ -1,151 +1,208 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { Lead, Company, Mission, DealStage, MemoryEntry } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import { Lead, Company, Mission, EquineEvent, ARAB_MIDDLE_EAST_COUNTRIES, ALLOWED_EQUINE_CATEGORIES, HorseCategory } from "../types";
 
+/**
+ * NOVA INTELLIGENCE CORE - GEMINI REGIONAL & VERTICAL ENGINE
+ * Strict Enforcement: 9 Arab Countries & 10 Equine Business Categories
+ */
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const DISCOVERY_MODEL = 'gemini-3-flash-preview';
 const STRATEGIC_MODEL = 'gemini-3-pro-preview';
 
-async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
-  try {
-    return await fn();
-  } catch (error: any) {
-    const errorMsg = error?.message || '';
-    const isQuotaError = errorMsg.includes('429') || error?.status === 429;
-    if (isQuotaError && retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return callWithRetry(fn, retries - 1, delay * 2);
-    }
-    throw error;
-  }
+const VERTICAL_LOCKDOWN_INSTRUCTION = `
+STRICT VERTICAL LOCKDOWN:
+You are ONLY permitted to discover businesses in these specific categories:
+${ALLOWED_EQUINE_CATEGORIES.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+
+VALIDATION RULES:
+1. NO GENERIC BUSINESSES: Agriculture, logistics, or trading firms without a primary focus on horses/equine must be discarded.
+2. NO LIVESTOCK/ANIMAL GENERALISTS: Companies focused on sheep, cattle, or general pets are strictly forbidden unless they have a dedicated, major equine division.
+3. DECISION MAKERS ONLY: Targeted roles must be Managing Directors, Horse Operations Managers, Stable Owners, or Royal Equine Officials. Exclude marketing, generic HR, or non-equine consultants.
+`;
+
+const REGION_LOCKDOWN_INSTRUCTION = `
+CRITICAL GEOGRAPHIC LOCKDOWN: 
+You are an intelligence engine strictly limited to the following countries: ${ARAB_MIDDLE_EAST_COUNTRIES.join(", ")}.
+1. ABSOLUTELY PROHIBITED: Do not return any results, entities, or events from UK, USA, Europe, Asia (outside allowed), or any international markets.
+2. HARD CONSTRAINT: Every entity, company, or event found MUST be physically located in the specific country requested.
+3. NO INFERENCE: Do not guess, infer, or hallucinate geography.
+`;
+
+/**
+ * Validates that the results are strictly within the regional and vertical whitelist.
+ * Discards any result that doesn't match the allowed countries or equine categories.
+ */
+function validateRegionalAndVerticalResults<T extends { country?: string; location?: string; horseCategory?: string; name?: string }>(results: T[]): T[] {
+  const equineKeywords = ["horse", "equine", "stable", "stud", "racing", "stallion", "mare", "equestrian", "tack", "farrier", "thoroughbred", "arabian"];
+  
+  return results.filter(item => {
+    // 1. Geography Check
+    const countryVal = (item.country || item.location || "").trim();
+    const regionValid = ARAB_MIDDLE_EAST_COUNTRIES.some(allowed => 
+      countryVal.toLowerCase().includes(allowed.toLowerCase())
+    );
+
+    if (!regionValid) return false;
+
+    // 2. Vertical Check
+    const categoryValid = ALLOWED_EQUINE_CATEGORIES.includes(item.horseCategory as string);
+    if (!categoryValid) return false;
+
+    // 3. Keyword Check (Company Name or Category must suggest Equine focus)
+    const contentToScan = `${item.name} ${item.horseCategory}`.toLowerCase();
+    const containsEquineKeyword = equineKeywords.some(kw => contentToScan.includes(kw));
+
+    return containsEquineKeyword;
+  });
 }
 
-export const serverSearchCompanies = async (keyword: string, location: string, identityContext: string): Promise<Company[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const schema = {
-    type: Type.ARRAY,
-    items: {
-      type: Type.OBJECT,
-      properties: {
-        name: { type: Type.STRING },
-        domain: { type: Type.STRING },
-        location: { type: Type.STRING },
-        horseCategory: { type: Type.STRING },
-        horseSubCategory: { type: Type.STRING },
-        buyerRole: { type: Type.STRING },
-        size: { type: Type.STRING },
-        relevanceScore: { type: Type.NUMBER },
-        revenue: { type: Type.STRING }
-      },
-      required: ["name", "domain", "location", "horseCategory", "horseSubCategory", "buyerRole", "relevanceScore", "revenue"]
-    }
-  };
-
-  return callWithRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: DISCOVERY_MODEL,
-      contents: `Search for equine buyers for: "${keyword}" in "${location}". Focus on high-tier Arab entities.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        systemInstruction: `You are Nova Intelligence. Identify high-value relationship targets in the Arab Horse market. Owner Identity:\n${identityContext}`
-      }
-    });
+export const serverDiscoverEquineEvents = async (year: number, identityContext: string): Promise<EquineEvent[]> => {
+  const prompt = `
+    Find exactly 33 high-value equestrian events (Exhibitions, Cups, Shows, Racing events) for the year ${year}.
     
-    const results = JSON.parse(response.text || "[]");
-    return results.map((c: any, i: number) => ({ ...c, id: `comp-${Date.now()}-${i}`, industry: 'Equine' }));
+    ${REGION_LOCKDOWN_INSTRUCTION}
+    ${VERTICAL_LOCKDOWN_INSTRUCTION}
+    
+    Output JSON format:
+    { "events": [{ "name": "...", "year": 2026, "month": "...", "dates": "...", "city": "...", "country": "...", "organizer": "...", "website": "...", "linkedin": "...", "email": "..." }] }
+    
+    Identity Context: ${identityContext}
+  `;
+
+  const response = await ai.models.generateContent({
+    model: DISCOVERY_MODEL,
+    contents: prompt,
+    config: { 
+      responseMimeType: "application/json",
+      systemInstruction: `You are the Nova Regional Event Discovery Engine. Vertical Lockdown: Equine only. Regional Lockdown: Middle East only.`
+    }
   });
+
+  const data = JSON.parse(response.text || '{"events": []}');
+  const results = data.events || [];
+
+  return validateRegionalAndVerticalResults(results).map((e: any, i: number) => ({
+    ...e,
+    id: `event-gemini-${Date.now()}-${i}`,
+    reminders: []
+  }));
+};
+
+export const serverSearchCompanies = async (keyword: string, location: string, identityContext: string): Promise<Company[]> => {
+  const prompt = `
+    Perform a High-Velocity "Big Brain" Market Intelligence Scan.
+    Task: Identify the top 20 high-value companies and stakeholders specifically for the equine industry in ${location}.
+    
+    ${REGION_LOCKDOWN_INSTRUCTION}
+    ${VERTICAL_LOCKDOWN_INSTRUCTION}
+    
+    For each company, provide:
+    - Accurate Legal Name
+    - Corporate Domain
+    - Physical Headquarters (City, Country)
+    - Industry Segment (MUST be one of the 10 allowed horse categories)
+    - Strategic Relevance Score (0-100)
+    - Estimated Revenue or Market Cap Category
+    - Key Stakeholder Role (Decision makers only)
+    
+    Output JSON format:
+    { "results": [{ "name": "...", "domain": "...", "location": "...", "horseCategory": "...", "horseSubCategory": "...", "buyerRole": "...", "size": "...", "relevanceScore": 85, "revenue": "..." }] }
+    
+    Identity Context: ${identityContext}
+  `;
+
+  const response = await ai.models.generateContent({
+    model: DISCOVERY_MODEL,
+    contents: prompt,
+    config: { 
+      responseMimeType: "application/json",
+      systemInstruction: `You are the Nova Big Brain Regional & Vertical Scanner. Horse business focus is MANDATORY. Lockdown is active for ${location}.`
+    }
+  });
+
+  const data = JSON.parse(response.text || '{"results": []}');
+  const results = data.results || [];
+
+  return validateRegionalAndVerticalResults(results).map((c: any, i: number) => ({
+    ...c,
+    id: `comp-gemini-${Date.now()}-${i}`,
+    industry: 'Equine Industry'
+  }));
 };
 
 export const serverAnalyzePriority = async (leadData: Lead, memoryContext: string): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const schema = {
-    type: Type.OBJECT,
-    properties: {
-      horseAuthorityScore: { type: Type.NUMBER },
-      horseIntentScore: { type: Type.NUMBER },
-      horseEngagementScore: { type: Type.NUMBER },
-      explanation: { type: Type.STRING },
-      reasoningSource: { type: Type.STRING }
-    },
-    required: ["horseAuthorityScore", "horseIntentScore", "horseEngagementScore", "explanation", "reasoningSource"]
-  };
+  const prompt = `
+    Strategic Analysis of ${leadData.firstName} ${leadData.lastName} at ${leadData.companyName}.
+    History: ${memoryContext}
+    
+    ${REGION_LOCKDOWN_INSTRUCTION}
+    ${VERTICAL_LOCKDOWN_INSTRUCTION}
+    
+    Output JSON Object:
+    { "horseAuthorityScore": 0-100, "horseIntentScore": 0-100, "horseEngagementScore": 0-100, "explanation": "...", "reasoningSource": "..." }
+  `;
 
-  return callWithRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: STRATEGIC_MODEL,
-      contents: `Lead: ${leadData.firstName} at ${leadData.companyName}. Context:\n${memoryContext}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        systemInstruction: "You are Nova Senior Advisor. Analyze the relationship. YOU MUST start the 'explanation' and 'reasoningSource' by citing specific historical events from the provided context (e.g., 'Based on recent behavior...', 'Given the last trust signal...')."
-      }
-    });
-    return JSON.parse(response.text || "{}");
+  const response = await ai.models.generateContent({
+    model: STRATEGIC_MODEL,
+    contents: prompt,
+    config: { 
+      responseMimeType: "application/json",
+      systemInstruction: "You are the Nova Big Brain. Evaluate trust and intent within the Middle Eastern equine sector."
+    }
   });
+
+  return JSON.parse(response.text || "{}");
 };
 
 export const serverGenerateDailyMissions = async (contextLeads: string = "", limit: number = 33): Promise<Mission[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const schema = {
-    type: Type.OBJECT,
-    properties: {
-      missions: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            contactName: { type: Type.STRING },
-            role: { type: Type.STRING },
-            company: { type: Type.STRING },
-            priority: { type: Type.STRING },
-            explanation: { type: Type.STRING },
-            reasoningSource: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-            recommendedAction: { type: Type.STRING }
-          },
-          required: ["contactName", "role", "company", "priority", "explanation", "reasoningSource", "confidence", "recommendedAction"]
-        }
-      }
+  const prompt = `
+    Generate ${limit} missions from this context:
+    ${contextLeads}
+    
+    ${REGION_LOCKDOWN_INSTRUCTION}
+    ${VERTICAL_LOCKDOWN_INSTRUCTION}
+    
+    Output JSON Object with missions array:
+    { "missions": [{ "contactName": "...", "role": "...", "company": "...", "priority": "High|Medium|Critical", "explanation": "...", "reasoningSource": "...", "confidence": 0-100, "recommendedAction": "..." }] }
+  `;
+
+  const response = await ai.models.generateContent({
+    model: DISCOVERY_MODEL,
+    contents: prompt,
+    config: { 
+      responseMimeType: "application/json",
+      systemInstruction: "You are Mission Control. Optimize engagement across regional equine nodes."
     }
-  };
-
-  return callWithRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: STRATEGIC_MODEL,
-      contents: `Generate ${limit} missions. Context:\n${contextLeads}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        systemInstruction: "You are Mission Control. Synthesize strategic relationship goals. Every explanation MUST reference past behavior or known industry context provided. If no strong signal exists, recommend 'Discovery' or 'No Action'."
-      }
-    });
-
-    const result = JSON.parse(response.text || "{}");
-    return result.missions || [];
   });
+
+  const result = JSON.parse(response.text || '{"missions": []}');
+  return result.missions || [];
 };
 
 export const serverAskStrategicBrain = async (prompt: string, identityContext: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: STRATEGIC_MODEL,
     contents: prompt,
     config: {
-      systemInstruction: `You are Nova Strategic Brain. Reference known owner identity: ${identityContext}`
+      systemInstruction: `You are the Nova Strategic Big Brain. Answer complex queries with deep logic, restricted to Middle East equine market dynamics. ${REGION_LOCKDOWN_INSTRUCTION} ${VERTICAL_LOCKDOWN_INSTRUCTION} Owner: ${identityContext}`
     }
   });
-  return response.text || "Offline.";
+  return response.text;
 };
 
-// Added missing serverGenerateOutreach method to fix error in novaOrchestrator
 export const serverGenerateOutreach = async (mission: Mission, identityContext: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `
+    Draft high-impact outreach for ${mission.contactName} at ${mission.company}.
+    Context: ${mission.explanation}
+  `;
+
   const response = await ai.models.generateContent({
-    model: STRATEGIC_MODEL,
-    contents: `Generate a professional outreach message for: ${mission.contactName} at ${mission.company}. Strategic Goal: ${mission.explanation}`,
+    model: DISCOVERY_MODEL,
+    contents: prompt,
     config: {
-      systemInstruction: `You are Nova Strategic Outreach Agent. Follow standard elite equine protocol. Owner Identity:\n${identityContext}`
+      systemInstruction: `You are the Nova Outreach Engine. Professional and culturally precise communication for the Arab equine region. ${REGION_LOCKDOWN_INSTRUCTION} ${VERTICAL_LOCKDOWN_INSTRUCTION} Owner: ${identityContext}`
     }
   });
-  return response.text || "No response generated.";
-};
+  return response.text;
+}

@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Loader2, Search, Filter, Mail, Phone, 
   Linkedin, ExternalLink, Globe, MoreHorizontal,
   ChevronRight, Thermometer, Calendar, Target,
-  Star, MessageSquare, MessageCircle
+  Star, MessageSquare, MessageCircle, Square, CheckSquare,
+  Trash2, Download, Check, CheckCircle2
 } from 'lucide-react';
 import { Lead, RelationshipTemperature } from '../types';
 import { leadService } from '../services/leadService';
+import { exportLeadsToCsv } from '../utils/exportUtils';
 
 interface CrmListProps {
   onSelectLead: (id: string) => void;
@@ -15,8 +16,11 @@ interface CrmListProps {
 
 const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
   const [contacts, setContacts] = useState<Lead[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     loadContacts();
@@ -27,6 +31,42 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
     const data = await leadService.getCrmContacts();
     setContacts(data);
     setIsLoading(false);
+  };
+
+  const toggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredContacts.length && filteredContacts.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredContacts.map(c => c.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to remove ${selectedIds.size} contacts from CRM?`)) return;
+    setIsBulkOperating(true);
+    // FIX: Explicitly typing the array to resolve unknown[] vs string[] type mismatch on line 57
+    const idsToRemove: string[] = Array.from(selectedIds);
+    await leadService.bulkRemoveFromCrm(idsToRemove);
+    setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
+    setFeedback(`Successfully removed ${selectedIds.size} contacts.`);
+    setSelectedIds(new Set());
+    setIsBulkOperating(false);
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const handleExport = () => {
+    const toExport = contacts.filter(c => selectedIds.has(c.id));
+    exportLeadsToCsv(toExport.length > 0 ? toExport : filteredContacts, 'crm_contacts_export.csv');
+    setFeedback('CRM Data Exported.');
+    setTimeout(() => setFeedback(null), 3000);
   };
 
   const getTemperatureColor = (temp?: RelationshipTemperature) => {
@@ -51,7 +91,53 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500">
+    <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500 relative">
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-top-4">
+          <div className="bg-slate-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-8 border border-white/10 backdrop-blur-md">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                {selectedIds.size} Contacts Selected
+              </span>
+              <span className="text-[8px] font-bold text-slate-400">Manage bulk relationships</span>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleBulkDelete}
+                disabled={isBulkOperating}
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-red-600/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
+              >
+                {isBulkOperating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                Delete Selected
+              </button>
+              <button 
+                onClick={handleExport}
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/10 text-white px-4 py-2 rounded-xl hover:bg-white/20 transition-all"
+              >
+                <Download className="w-3 h-3" /> Export CSV
+              </button>
+            </div>
+            <button 
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {feedback && (
+        <div className="fixed top-24 right-10 z-[110] animate-in slide-in-from-right-4">
+          <div className="px-6 py-3 rounded-2xl shadow-2xl bg-slate-900 text-white border border-white/10 flex items-center gap-3">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest">{feedback}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-end justify-between border-b border-slate-200 pb-8">
         <div>
           <div className="flex items-center gap-4 mb-2">
@@ -66,6 +152,15 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
         </div>
 
         <div className="flex items-center gap-4">
+          {contacts.length > 0 && (
+            <button 
+              onClick={toggleSelectAll}
+              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-white transition-all flex items-center gap-2"
+            >
+              {selectedIds.size === filteredContacts.length ? <CheckSquare className="w-4 h-4 text-indigo-600" /> : <Square className="w-4 h-4" />}
+              {selectedIds.size === filteredContacts.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
@@ -98,9 +193,16 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
             <div 
               key={contact.id}
               onClick={() => onSelectLead(contact.id)}
-              className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer"
+              className={`bg-white border rounded-[2rem] p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer relative ${selectedIds.has(contact.id) ? 'border-indigo-500 ring-4 ring-indigo-500/5' : 'border-slate-200'}`}
             >
-              <div className="flex items-start justify-between mb-6">
+              <button 
+                onClick={(e) => toggleSelect(e, contact.id)}
+                className={`absolute top-6 left-6 z-10 p-1 rounded-lg transition-colors ${selectedIds.has(contact.id) ? 'text-indigo-600' : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-indigo-400'}`}
+              >
+                {selectedIds.has(contact.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+              </button>
+
+              <div className="flex items-start justify-between mb-6 pl-10">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white text-xl font-black">
                     {contact.firstName[0]}

@@ -11,7 +11,11 @@ import {
   Globe,
   Inbox,
   Layout,
-  Ticket
+  Ticket,
+  Users,
+  Database,
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { WALID_IDENTITY } from '../services/identityService';
@@ -25,75 +29,84 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, setIsOpen }) => {
   const menuItems = [
-    { id: ViewType.NOVA_BRIEF, label: 'Nova Brief', icon: Layout },
-    { id: ViewType.DASHBOARD, label: 'Mission Control', icon: LayoutDashboard },
-    { id: ViewType.SEARCH, label: 'Market Search', icon: Search },
-    { id: ViewType.NOVA_LEADS, label: 'Nova Leads', icon: Inbox },
-    { id: ViewType.AI_BRAIN, label: 'Nova Brain', icon: BrainCircuit },
-    { id: ViewType.LISTS, label: 'Saved CRM', icon: List },
+    { id: ViewType.NOVA_BRIEF, label: 'Home', icon: Layout },
+    { id: ViewType.SEARCH, label: 'Search', icon: Search },
+    { id: ViewType.DASHBOARD, label: 'Missions', icon: Layers },
+    { id: ViewType.NOVA_LEADS, label: 'Discovery', icon: Inbox },
+    { id: ViewType.LISTS, label: 'Total CRM', icon: Database },
+    { id: ViewType.AI_BRAIN, label: 'Big Brain', icon: BrainCircuit },
     { id: ViewType.EXPO_LANDING, label: 'Expo Hub', icon: Ticket },
   ];
 
   return (
     <aside 
-      className={`bg-slate-950 text-white transition-all duration-300 flex flex-col ${
-        isOpen ? 'w-64' : 'w-20'
-      } relative border-r border-slate-800 shadow-2xl z-20`}
+      className={`bg-[#061121] text-white transition-all duration-300 flex flex-col ${
+        isOpen ? 'w-56' : 'w-16'
+      } relative border-r border-white/10 shadow-2xl z-20`}
     >
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-400/50">
+      <div className="p-4 flex items-center gap-3">
+        <div className="w-8 h-8 bg-[#0047FF] rounded-lg flex items-center justify-center font-black text-white shrink-0 shadow-lg shadow-blue-500/20">
           N
         </div>
         {isOpen && (
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tighter leading-none">NOVA</span>
-            <span className="text-[9px] font-black text-indigo-400 tracking-widest uppercase mt-0.5">Walid's Instance</span>
+            <span className="text-sm font-black tracking-tight leading-none uppercase">NOVA</span>
+            <span className="text-[8px] font-black text-blue-400 tracking-widest uppercase mt-0.5">Enterprise</span>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
-              activeView === item.id 
-                ? 'bg-white/10 text-white shadow-xl' 
-                : 'text-slate-500 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <item.icon className={`w-5 h-5 shrink-0 ${activeView === item.id ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400'}`} />
-            {isOpen && <span className="font-bold text-xs uppercase tracking-widest whitespace-nowrap">{item.label}</span>}
-            {item.id === ViewType.NOVA_LEADS && !isOpen && (
-              <div className="absolute right-3 top-3 w-2 h-2 bg-indigo-500 rounded-full border-2 border-slate-950"></div>
-            )}
-          </button>
-        ))}
-      </nav>
+      <div className="mt-4 px-2">
+        {isOpen && <span className="px-3 text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Workspace</span>}
+        <nav className="space-y-0.5">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onViewChange(item.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
+                activeView === item.id 
+                  ? 'bg-[#0047FF] text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <item.icon className={`w-4 h-4 shrink-0 ${activeView === item.id ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`} />
+              {isOpen && <span className="font-bold text-[11px] whitespace-nowrap">{item.label}</span>}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-      <div className="p-4 border-t border-white/5 space-y-2">
-        <a 
-          href={WALID_IDENTITY.website}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex items-center gap-3 px-3 py-3 text-indigo-400 hover:text-indigo-300 rounded-xl transition-colors hover:bg-white/5 group ${!isOpen ? 'justify-center' : ''}`}
-        >
-          <Globe className="w-5 h-5 shrink-0" />
-          {isOpen && <span className="text-[10px] font-black uppercase tracking-widest group-hover:underline decoration-2 underline-offset-4">Visit Store</span>}
-        </a>
-
-        <div className={`flex items-center gap-3 px-3 py-3 text-slate-500 rounded-xl ${isOpen ? 'bg-white/5 border border-white/5' : 'justify-center'}`}>
-          <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-500" />
-          {isOpen && <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Walid Encrypted</span>}
+      <div className="mt-auto p-4 border-t border-white/5 space-y-4">
+        {isOpen && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+               <span>Credits</span>
+               <span className="text-blue-400">Unlimited</span>
+            </div>
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+               <div className="h-full bg-blue-500 w-[75%]" />
+            </div>
+          </div>
+        )}
+        
+        <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+          <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white/10">
+            {WALID_IDENTITY.fullName[0]}
+          </div>
+          {isOpen && (
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-slate-200 truncate w-24 leading-none">{WALID_IDENTITY.fullName}</span>
+              <span className="text-[8px] font-bold text-slate-500 uppercase">{WALID_IDENTITY.companyName}</span>
+            </div>
+          )}
         </div>
       </div>
 
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="absolute top-24 -right-3 w-6 h-6 bg-slate-900 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition-all shadow-2xl hover:scale-110 active:scale-90"
+        className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 bg-slate-900 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition-all shadow-xl hover:scale-110"
       >
-        {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        {isOpen ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
       </button>
     </aside>
   );

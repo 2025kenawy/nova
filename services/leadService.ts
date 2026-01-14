@@ -78,9 +78,14 @@ export const leadService = {
     return true;
   },
 
-  /**
-   * Promote a Mission opportunity to CRM with specific metadata.
-   */
+  async bulkRemoveFromCrm(ids: string[]): Promise<void> {
+    localCrmContacts = localCrmContacts.filter(c => !ids.includes(c.id));
+    await safeDbCall(() => supabase.from('crm_contacts').delete().in('id', ids), null);
+    
+    // Optionally revert status in leads table
+    await safeDbCall(() => supabase.from('leads').update({ status: 'DISCOVERED' }).in('id', ids), null);
+  },
+
   async promoteMissionToCrm(mission: Mission, withReminder: boolean = false): Promise<boolean> {
     const crmContacts = await this.getCrmContacts();
     const nameParts = mission.contactName.split(' ');
@@ -96,7 +101,6 @@ export const leadService = {
     
     if (existingIndex !== -1) {
       const existing = crmContacts[existingIndex];
-      // Append activity/note, don't downgrade data
       const updatedNotes = `${existing.notes || ''}\n\n${missionNote}`.trim();
       const updatedTemperature: RelationshipTemperature = (existing.temperature === 'Hot') ? 'Hot' : 'Warm';
       
@@ -165,6 +169,15 @@ export const leadService = {
     localCrmContacts.push(entry);
     await safeDbCall(() => supabase.from('crm_contacts').upsert([entry]), null);
     return true;
+  },
+
+  async bulkPromoteMissionToCrm(missions: Mission[]): Promise<number> {
+    let count = 0;
+    for (const mission of missions) {
+      const success = await this.promoteMissionToCrm(mission);
+      if (success) count++;
+    }
+    return count;
   },
 
   async getCrmContacts(): Promise<Lead[]> {

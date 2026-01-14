@@ -10,18 +10,46 @@ export type DealStage =
   | 'Strategic';
 
 export type HorseCategory = 
-  | 'Core Operations'
-  | 'Health & Performance'
-  | 'Supply & Trade'
-  | 'Gov & Elite'
-  | 'Services'
-  | 'Competition'
-  | 'Media & Influence'
+  | 'Horse Feed & Nutrition'
+  | 'Veterinary & Equine Health'
+  | 'Breeding & Stud Farms'
+  | 'Racing & Competition'
+  | 'Horse Equipment & Tack'
+  | 'Equine Transport & Logistics'
+  | 'Auctions & Horse Trading'
+  | 'Government & Royal Equestrian Operations'
+  | 'Equestrian Events & Expos'
+  | 'High-Value Stables & Private Horse Owners'
   | 'None';
 
 export type LeadStatus = 'DISCOVERED' | 'SAVED' | 'IGNORED' | 'ARCHIVED' | 'Enriched';
 export type RelationshipTemperature = 'Cold' | 'Warm' | 'Hot';
 export type MemoryCategory = 'TRUST_SIGNAL' | 'CULTURAL_NOTE' | 'BUYING_CYCLE' | 'ENGAGEMENT' | 'ACTION' | 'SYSTEM';
+
+export const ARAB_MIDDLE_EAST_COUNTRIES = [
+  "Saudi Arabia",
+  "United Arab Emirates",
+  "Qatar",
+  "Kuwait",
+  "Oman",
+  "Bahrain",
+  "Jordan",
+  "Egypt",
+  "Morocco"
+];
+
+export const ALLOWED_EQUINE_CATEGORIES = [
+  "Horse Feed & Nutrition",
+  "Veterinary & Equine Health",
+  "Breeding & Stud Farms",
+  "Racing & Competition",
+  "Horse Equipment & Tack",
+  "Equine Transport & Logistics",
+  "Auctions & Horse Trading",
+  "Government & Royal Equestrian Operations",
+  "Equestrian Events & Expos",
+  "High-Value Stables & Private Horse Owners"
+];
 
 export interface Reminder {
   id: string;
@@ -45,7 +73,6 @@ export interface Lead {
   status: LeadStatus;
   dealStage: DealStage;
   horseCategory?: HorseCategory;
-  // Added horseSubCategory to fix type error in ExpoLanding.tsx
   horseSubCategory?: string;
   isSaved?: boolean;
   scoring?: LeadScoring;
@@ -62,7 +89,6 @@ export interface Lead {
   nova_confidence?: number;
 }
 
-// Added Company interface to fix import errors in LeadSearch, decisionEngine, and aiService
 export interface Company {
   id: string;
   name: string;
@@ -77,7 +103,6 @@ export interface Company {
   revenue?: string;
 }
 
-// Added UserIdentity interface to fix import error in identityService
 export interface UserIdentity {
   fullName: string;
   role: string;
@@ -92,7 +117,6 @@ export interface UserIdentity {
   location: string;
 }
 
-// Added EquineEvent interface to fix import errors in ExpoLanding and eventService
 export interface EquineEvent {
   id: string;
   name: string;
@@ -115,7 +139,7 @@ export interface Mission {
   company: string;
   priority: 'High' | 'Medium' | 'Critical';
   explanation: string;
-  reasoningSource?: string; // Where this advice comes from in memory
+  reasoningSource?: string;
   confidence: number;
   recommendedAction: string;
   isSaved?: boolean;

@@ -27,15 +27,30 @@ export const eventService = {
     );
   },
 
-  async getAllEvents(): Promise<EquineEvent[]> {
-    return safeDbCall(
-      () => supabase.from('events_collection').select('*').order('year', { ascending: true }).order('month', { ascending: true }),
-      [...localEvents].sort((a, b) => {
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        if (a.year !== b.year) return a.year - b.year;
-        return months.indexOf(a.month) - months.indexOf(b.month);
-      })
+  async bulkSaveEvents(events: EquineEvent[]): Promise<void> {
+    localEvents = [...events];
+    await safeDbCall(
+      () => supabase.from('events_collection').delete().neq('id', 'null'),
+      null
     );
+    await safeDbCall(
+      () => supabase.from('events_collection').insert(events),
+      null
+    );
+  },
+
+  async getAllEvents(): Promise<EquineEvent[]> {
+    const dbEvents = await safeDbCall(
+      () => supabase.from('events_collection').select('*').order('year', { ascending: true }).order('month', { ascending: true }),
+      [...localEvents]
+    );
+
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    return dbEvents.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return months.indexOf(a.month) - months.indexOf(b.month);
+    });
   },
 
   async updateEventReminders(id: string, reminders: Reminder[]): Promise<void> {

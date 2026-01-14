@@ -5,22 +5,22 @@ import { calculateLeadPriority, sortMissionsByPriority, MAX_VISIBLE_RESULTS } fr
 import { Company, Lead, Mission, LeadScoring, DealStage } from '../types';
 import { saveMemory, getMemoryContext, getAllMemories } from './memoryService';
 import { getIdentityContext } from './identityService';
+import { leadService } from './leadService';
 
 /**
  * NOVA ARCHITECTURAL ORCHESTRATOR
  * Sole bridge between UI and all backend services.
- * Implements strict data validation and logic separation.
+ * Now automated for Arab market discovery and relationship building.
  */
 
 export const novaOrchestrator = {
   // --- Market Scan & Entity Discovery ---
   
-  async discoverCompanies(keyword: string, location: string): Promise<Company[]> {
-    console.log(`Nova Orchestrator: Initiating market discovery for ${keyword} in ${location}...`);
+  async runMarketScan(keyword: string, location: string): Promise<Company[]> {
+    console.log(`[NovaOrchestrator] Initiating Arab-Market Scan: ${keyword} in ${location}`);
     try {
       const results = await ai.serverSearchCompanies(keyword, location, getIdentityContext());
-      console.log(`Nova Orchestrator: Found ${results.length} entities.`);
-      // Validate and sanitize data before returning to UI
+      console.log(`[NovaOrchestrator] Scan Complete. Found ${results.length} entities.`);
       return results.map(c => ({
         ...c,
         relevanceScore: Math.min(100, Math.max(0, c.relevanceScore || 0)),
@@ -28,9 +28,13 @@ export const novaOrchestrator = {
         size: c.size || 'N/A'
       }));
     } catch (error) {
-      console.error("Orchestrator: Market scan failed", error);
+      console.error("[NovaOrchestrator] Market scan critical failure:", error);
       return [];
     }
+  },
+
+  async discoverCompanies(keyword: string, location: string): Promise<Company[]> {
+    return this.runMarketScan(keyword, location);
   },
 
   async qualifyCompany(company: Company): Promise<Partial<Company>> {
@@ -50,11 +54,19 @@ export const novaOrchestrator = {
   async findDecisionMakers(company: Company): Promise<Lead[]> {
     try {
       const results = await ai.serverFindDecisionMakers(company);
-      return results.map(l => ({
+      const leads = results.map(l => ({
         ...l,
-        status: 'New' as Lead['status'],
-        dealStage: 'Discovery' as DealStage
+        status: 'DISCOVERED' as Lead['status'],
+        dealStage: 'Discovery' as DealStage,
+        companyDomain: company.domain
       }));
+
+      // AUTO-SAVE TO PERSISTENT INBOX
+      for (const lead of leads) {
+        await leadService.saveLead(lead);
+      }
+
+      return leads;
     } catch (error) {
       console.error("Orchestrator: DM search failed", error);
       return [];
@@ -66,7 +78,8 @@ export const novaOrchestrator = {
   async analyzeLeadPriority(lead: Lead): Promise<{ 
     status: Lead['status'], 
     dealStage: Lead['dealStage'], 
-    scoring: LeadScoring 
+    scoring: LeadScoring,
+    social?: { twitter?: string, facebook?: string, instagram?: string }
   } | null> {
     try {
       const context = await getMemoryContext(lead.id);
@@ -88,14 +101,22 @@ export const novaOrchestrator = {
       await saveMemory({
         entityId: lead.id,
         type: 'decision',
-        content: `Lead prioritized at ${scoring.overall}%. Logic: ${aiResult.explanation}`,
+        content: `Lead prioritized at ${scoring.overall}% in Arab market logic. ${aiResult.explanation}`,
         metadata: { ...aiResult, finalScore: scoring.overall }
       });
+
+      // Update status to Enriched in persistence
+      await leadService.updateLeadStatus(lead.id, 'Enriched');
 
       return { 
         status: 'Enriched', 
         dealStage: (aiResult.dealStage || 'Discovery') as DealStage, 
-        scoring 
+        scoring,
+        social: {
+          twitter: aiResult.twitter,
+          facebook: aiResult.facebook,
+          instagram: aiResult.instagram
+        }
       };
     } catch (error) {
       console.error("Orchestrator: Priority analysis failed", error);
@@ -103,61 +124,70 @@ export const novaOrchestrator = {
     }
   },
 
+  /**
+   * AUTOMATED INTELLIGENCE PIPELINE
+   * Strictly Arab Markets | Horse Product Stakeholders | Auto-Discovery
+   */
   async runFullIntelligencePipeline(): Promise<Mission[]> {
-    console.log("Nova Orchestrator: Executing FULL intelligence pipeline (MAX_RESULTS: " + MAX_VISIBLE_RESULTS + ")...");
-    // 1. Force Discovery across broad GCC keywords
-    const searchTerms = ["Elite Stables", "Royal Horse Clubs", "Breeding Centers", "Equine Logistics"];
-    const locations = ["UAE", "Saudi Arabia", "Kuwait", "Qatar", "Bahrain"];
+    const searchTerms = [
+      "Equine Product Buyers", 
+      "Horse Feed Importers", 
+      "Elite Stables", 
+      "Equestrian Retailers", 
+      "Royal Horse Clubs",
+      "Stable Equipment Distributors"
+    ];
+    const locations = ["UAE", "Saudi Arabia", "Qatar", "Kuwait", "Oman", "Bahrain", "Jordan", "Egypt"];
     
-    // Efficiently discover across primary target
-    const companies = await this.discoverCompanies(searchTerms[0], locations.join(", "));
+    // Select dynamic targets for breadth
+    const term = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+    const location = locations[Math.floor(Math.random() * locations.length)];
+    
+    const companies = await this.discoverCompanies(term, location);
     
     if (companies.length > 0) {
-      // Process top batch to seed intelligence
-      const topBatch = companies.slice(0, 3);
+      // Process top potential stakeholders automatically
+      const topBatch = companies.slice(0, 5);
       for (const comp of topBatch) {
-        await this.qualifyCompany(comp);
-        const leads = await this.findDecisionMakers(comp);
-        if (leads.length > 0) {
-          await this.analyzeLeadPriority(leads[0]);
+        const intel = await this.qualifyCompany(comp);
+        const leads = await this.findDecisionMakers({ ...comp, ...intel });
+        
+        // AUTO-PROMOTION: Move elite discoveries (>85 relevance) directly to CRM for relationship building
+        if (comp.relevanceScore > 85 || (intel.companyScore && intel.companyScore > 85)) {
+           for (const lead of leads) {
+             await leadService.updateLeadStatus(lead.id, 'SAVED');
+             await saveMemory({
+               entityId: lead.id,
+               type: 'decision',
+               content: 'Lead auto-promoted to CRM due to high Arab-market relevance and product intent.'
+             });
+           }
         }
       }
     }
     
-    // 5. Generate Missions based on new state
     return await this.getDailyCommands();
   },
 
   async getDailyCommands(): Promise<Mission[]> {
-    console.log(`Nova Orchestrator: Synthesizing mission control (Limit: ${MAX_VISIBLE_RESULTS})...`);
     try {
-      // Check memory for any recent leads to provide context to Groq
+      const discoveredLeads = await leadService.getDiscoveryInbox();
+      
+      if (discoveredLeads.length > 0) {
+        const leadContext = discoveredLeads.slice(0, 15).map(l => `${l.firstName} ${l.lastName} (${l.title}) at ${l.companyName}`).join("; ");
+        return await ai.serverGenerateDailyMissions(`LEAD INBOX PENDING (Arab Market): ${leadContext}`, MAX_VISIBLE_RESULTS);
+      }
+
       const recentMemories = await getAllMemories();
-      const contextString = recentMemories
-        .slice(0, 10)
-        .map(m => `${m.type}: ${m.content}`)
-        .join("; ");
+      const contextString = recentMemories.slice(0, 10).map(m => `${m.type}: ${m.content}`).join("; ");
 
       let missions = await ai.serverGenerateDailyMissions(contextString, MAX_VISIBLE_RESULTS);
       
-      // Step 2: Auto-Discovery if missions are empty or cold
       if (missions.length === 0) {
-        console.warn("Nova Orchestrator: Intelligence gap detected. Running emergency discovery.");
         return await this.runFullIntelligencePipeline();
       }
 
-      // Validating mission data
-      const validated = missions.map(m => ({
-        contactName: m.contactName || "Market Opportunity",
-        role: m.role || "Prospect",
-        company: m.company || "Pending Search",
-        priority: (m.priority === 'High' || m.priority === 'Medium') ? m.priority : 'Medium',
-        explanation: m.explanation || "System recommends market re-scan to identify high-intent targets.",
-        confidence: m.confidence || 50,
-        recommendedAction: m.recommendedAction || "wait"
-      }));
-      
-      return sortMissionsByPriority(validated);
+      return sortMissionsByPriority(missions);
     } catch (error) {
       console.error("Orchestrator: Command generation failed", error);
       return [];
@@ -182,8 +212,10 @@ export const novaOrchestrator = {
     }
   },
 
-  // --- Final Delivery ---
-
+  /**
+   * OUTREACH IS MANUAL ONLY
+   * NO AUTOMATED MESSAGING
+   */
   async sendEmail(to: string, rawResponse: string, contactName: string): Promise<boolean> {
     try {
       const lines = rawResponse.split('\n');
@@ -199,7 +231,7 @@ export const novaOrchestrator = {
         await saveMemory({
           entityId: to,
           type: 'outreach',
-          content: `Professional dispatch to ${contactName}: ${subject}`,
+          content: `Manual dispatch to ${contactName}: ${subject}`,
           metadata: { status: 'sent', recipient: contactName, subject }
         });
       }

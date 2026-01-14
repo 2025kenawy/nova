@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center gap-3">
           <button onClick={handleRecalibrate} className="px-6 py-4 bg-white rounded-full border border-slate-200 shadow-sm hover:shadow-lg transition-all flex items-center gap-4">
              <Radar className="w-5 h-5 text-indigo-600 animate-spin-slow" />
-             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Re-Scan Markets</span>
+             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Refresh Intelligence</span>
           </button>
         </div>
       </div>
@@ -176,8 +176,8 @@ const Dashboard: React.FC = () => {
                 <Target className="w-10 h-10 text-indigo-500 animate-pulse" />
              </div>
              <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Intelligence Engine Idle</h3>
-                <p className="text-slate-400 font-medium max-w-sm mt-3 leading-relaxed text-sm">No active strategic signals detected in recent history. Recommend running a new market scan to populate high-intent targets.</p>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Recommendation Message</h3>
+                <p className="text-slate-400 font-medium max-w-sm mt-3 leading-relaxed text-sm">No intelligence yet. Recommend running a market scan.</p>
              </div>
              <button onClick={handleRecalibrate} className="mt-4 px-10 py-4 bg-indigo-600 text-white font-black text-[10px] rounded-xl uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-3">
                <Rocket className="w-4 h-4" />

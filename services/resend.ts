@@ -1,9 +1,10 @@
 
 /**
  * RESEND EMAIL DELIVERY SERVICE
+ * Handles outgoing strategic communications via the Resend API.
  */
 
-const RESEND_API_KEY = "re_6bMTY4H6_4rktATZTwLpPJzk5dxwvndNT";
+const RESEND_API_KEY = "re_2EbjmAHe_E8jzpF8be7uhz1YrZ14vpkoj";
 const SENDER_EMAIL = "info@nobelspiritlabs.store";
 
 export async function sendResendEmail(to: string, subject: string, html: string): Promise<boolean> {
@@ -23,14 +24,19 @@ export async function sendResendEmail(to: string, subject: string, html: string)
     });
 
     if (!response.ok) {
-      const err = await response.json();
-      console.error("Resend API Error:", err);
+      const err = await response.json().catch(() => ({ message: "Unknown API Error" }));
+      console.error("Resend API Failure:", err);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Resend Connection Failed:", error);
+    // Specifically handle the "Load failed" error which usually indicates a CORS block or network interruption
+    if (error instanceof TypeError && error.message === "Load failed") {
+      console.error("Resend Connection Failed: Browser CORS policy or Network block detected. Transmittal aborted safely.");
+    } else {
+      console.error("Resend Dispatch Exception:", error);
+    }
     return false;
   }
 }

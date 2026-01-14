@@ -8,7 +8,10 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ShieldCheck,
-  Globe
+  Globe,
+  Inbox,
+  Layout,
+  Ticket
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { WALID_IDENTITY } from '../services/identityService';
@@ -22,10 +25,13 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, setIsOpen }) => {
   const menuItems = [
+    { id: ViewType.NOVA_BRIEF, label: 'Nova Brief', icon: Layout },
     { id: ViewType.DASHBOARD, label: 'Mission Control', icon: LayoutDashboard },
     { id: ViewType.SEARCH, label: 'Market Search', icon: Search },
+    { id: ViewType.NOVA_LEADS, label: 'Nova Leads', icon: Inbox },
     { id: ViewType.AI_BRAIN, label: 'Nova Brain', icon: BrainCircuit },
-    { id: ViewType.LISTS, label: 'High Intent Lists', icon: List },
+    { id: ViewType.LISTS, label: 'Saved CRM', icon: List },
+    { id: ViewType.EXPO_LANDING, label: 'Expo Hub', icon: Ticket },
   ];
 
   return (
@@ -59,6 +65,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, set
           >
             <item.icon className={`w-5 h-5 shrink-0 ${activeView === item.id ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400'}`} />
             {isOpen && <span className="font-bold text-xs uppercase tracking-widest whitespace-nowrap">{item.label}</span>}
+            {item.id === ViewType.NOVA_LEADS && !isOpen && (
+              <div className="absolute right-3 top-3 w-2 h-2 bg-indigo-500 rounded-full border-2 border-slate-950"></div>
+            )}
           </button>
         ))}
       </nav>

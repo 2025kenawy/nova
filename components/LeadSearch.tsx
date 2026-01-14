@@ -44,21 +44,16 @@ const LeadSearch: React.FC = () => {
     { name: 'Media & Influence', icon: Users },
   ];
 
-  // Robust Email Validation
   const isValidEmail = (email: string | undefined): boolean => {
     if (!email) return false;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    // Exclude internal placeholders and generic strings
     const isPlaceholder = email.includes('nova.secure') || email.includes('secure.node') || email.includes('Contact Via');
     return emailRegex.test(email) && !isPlaceholder;
   };
 
-  // Robust URL Validation
   const isValidUrl = (url: string | undefined): boolean => {
     if (!url) return false;
-    // Exclude common invalid inputs
     if (url === 'TBD' || url === 'N/A' || url.length < 4) return false;
-    // Basic domain check
     return url.includes('.');
   };
 
@@ -70,9 +65,13 @@ const LeadSearch: React.FC = () => {
   const handleSearch = async () => {
     if (!keyword.trim()) return;
     setIsSearching(true);
+    // Don't clear results, show last known results while refreshing
     setStep('companies');
-    setSelectedIds(new Set());
-    const results = await novaOrchestrator.discoverCompanies(keyword, location || 'Middle East');
+    
+    console.log('[LeadSearch] Refreshing Intelligence via Orchestrator...');
+    const results = await novaOrchestrator.runMarketScan(keyword, location || 'Global Equine Market');
+    console.log('[LeadSearch] Results received from Orchestrator:', results);
+    
     setCompanies(results);
     setIsSearching(false);
   };
@@ -99,7 +98,10 @@ const LeadSearch: React.FC = () => {
         ...l, 
         status: result.status,
         dealStage: result.dealStage,
-        scoring: result.scoring
+        scoring: result.scoring,
+        twitter: result.social?.twitter || l.twitter,
+        facebook: result.social?.facebook || l.facebook,
+        instagram: result.social?.instagram || l.instagram
       } : l));
     }
     setIsEnriching(null);
@@ -121,13 +123,11 @@ const LeadSearch: React.FC = () => {
     }
   };
 
-  const filteredCompanies = selectedCategory === 'All' 
-    ? companies 
-    : companies.filter(c => c.horseCategory === selectedCategory);
+  // Temporarily disable strict sector filtering to verify all raw results flow through
+  const filteredCompanies = companies;
 
   return (
     <div className="flex h-[calc(100vh-140px)] -m-6 md:-m-8 bg-white overflow-hidden border-t border-slate-200">
-      {/* Apollo-Style Filter Sidebar */}
       <aside className="w-80 bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
         <div className="p-6 border-b border-slate-200 bg-white">
            <div className="flex items-center justify-between mb-8">
@@ -180,7 +180,6 @@ const LeadSearch: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Apollo-Style Table Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-white">
         <div className="px-10 py-8 border-b border-slate-200 flex flex-col gap-8 bg-white shadow-sm z-10">
           <div className="flex items-center justify-between">
@@ -198,9 +197,13 @@ const LeadSearch: React.FC = () => {
                </div>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={handleSearch} className="px-8 py-3 bg-indigo-600 text-white font-black text-[11px] uppercase tracking-[0.2em] rounded-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center gap-3">
+              <button 
+                onClick={handleSearch} 
+                disabled={isSearching && companies.length === 0}
+                className="px-8 py-3 bg-indigo-600 text-white font-black text-[11px] uppercase tracking-[0.2em] rounded-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center gap-3"
+              >
                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-                 Execute Scan
+                 Refresh Intelligence
               </button>
             </div>
           </div>
@@ -218,8 +221,13 @@ const LeadSearch: React.FC = () => {
           </div>
         </div>
 
-        {/* High Density Table */}
         <div className="flex-1 overflow-auto">
+           {isSearching && companies.length === 0 ? (
+             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
+               <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+               <p className="text-[10px] font-black uppercase tracking-widest">Nova Intelligence Refreshing...</p>
+             </div>
+           ) : (
            <table className="w-full text-left border-collapse table-fixed">
               <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-20 border-b border-slate-200 shadow-sm">
                  <tr className="text-[10px] font-black uppercase text-slate-400 tracking-[0.25em]">
@@ -248,36 +256,37 @@ const LeadSearch: React.FC = () => {
                            <div className={`w-12 h-12 ${step === 'companies' ? 'bg-slate-900' : 'bg-indigo-100 text-indigo-700'} rounded-2xl flex items-center justify-center font-black text-lg shadow-sm shrink-0 uppercase`}>
                              {step === 'companies' ? item.name[0] : item.firstName[0]}
                            </div>
-                           <div className="min-w-0">
-                              <span className="font-black text-slate-900 text-base leading-none block mb-1.5 truncate group-hover:text-indigo-600 transition-colors">
-                                {step === 'companies' ? item.name : `${item.firstName} ${item.lastName}`}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight truncate">
+                           <div className="min-w-0 flex items-center gap-4">
+                              <div className="min-w-0">
+                                <span className="font-black text-slate-900 text-base leading-none block mb-1.5 truncate group-hover:text-indigo-600 transition-colors">
+                                  {step === 'companies' ? item.name : `${item.firstName} ${item.lastName}`}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight truncate block">
                                   {step === 'companies' ? item.domain : item.title}
                                 </span>
-                                <div className="flex flex-col gap-1 items-center shrink-0">
-                                  {isValidUrl(item.linkedin) && (
-                                    <a href={formatUrl(item.linkedin)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-200 rounded transition-colors" title="LinkedIn Profile">
-                                      <Linkedin className="w-3 h-3 text-slate-300" />
-                                    </a>
-                                  )}
-                                  {step === 'people' && isValidUrl(item.twitter) && (
-                                    <a href={formatUrl(item.twitter)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-200 rounded transition-colors" title="Twitter Profile">
-                                      <Twitter className="w-3 h-3 text-slate-300 hover:text-sky-400" />
-                                    </a>
-                                  )}
-                                  {step === 'people' && isValidUrl(item.facebook) && (
-                                    <a href={formatUrl(item.facebook)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-200 rounded transition-colors" title="Facebook Profile">
-                                      <Facebook className="w-3 h-3 text-slate-300 hover:text-blue-600" />
-                                    </a>
-                                  )}
-                                  {step === 'people' && isValidUrl(item.instagram) && (
-                                    <a href={formatUrl(item.instagram)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-200 rounded transition-colors" title="Instagram Profile">
-                                      <Instagram className="w-3 h-3 text-slate-300 hover:text-pink-500" />
-                                    </a>
-                                  )}
-                                </div>
+                              </div>
+                              {/* Social Intelligence Stack */}
+                              <div className="flex flex-col gap-1 items-center shrink-0 border-l border-slate-100 pl-3">
+                                {isValidUrl(item.linkedin) && (
+                                  <a href={formatUrl(item.linkedin)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-100 rounded-lg transition-all" title="LinkedIn Profile">
+                                    <Linkedin className="w-3.5 h-3.5 text-slate-400 hover:text-[#0077B5]" />
+                                  </a>
+                                )}
+                                {step === 'people' && isValidUrl(item.twitter) && (
+                                  <a href={formatUrl(item.twitter)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-sky-50 rounded-lg transition-all" title="Twitter Profile">
+                                    <Twitter className="w-3.5 h-3.5 text-slate-400 hover:text-[#1DA1F2]" />
+                                  </a>
+                                )}
+                                {step === 'people' && isValidUrl(item.facebook) && (
+                                  <a href={formatUrl(item.facebook)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-blue-50 rounded-lg transition-all" title="Facebook Profile">
+                                    <Facebook className="w-3.5 h-3.5 text-slate-400 hover:text-[#1877F2]" />
+                                  </a>
+                                )}
+                                {step === 'people' && isValidUrl(item.instagram) && (
+                                  <a href={formatUrl(item.instagram)} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-pink-50 rounded-lg transition-all" title="Instagram Profile">
+                                    <Instagram className="w-3.5 h-3.5 text-slate-400 hover:text-[#E4405F]" />
+                                  </a>
+                                )}
                               </div>
                            </div>
                         </div>
@@ -304,6 +313,11 @@ const LeadSearch: React.FC = () => {
                            {step === 'companies' && item.qualificationStatus === 'qualified' && (
                              <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-2 flex items-center gap-1">
                                <Sparkles className="w-2.5 h-2.5" /> Verified High Capacity
+                             </p>
+                           )}
+                           {step === 'people' && item.status === 'Enriched' && (
+                             <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest mt-2 flex items-center gap-1">
+                               <Sparkles className="w-2.5 h-2.5" /> Social Intel Verified
                              </p>
                            )}
                         </div>
@@ -374,8 +388,8 @@ const LeadSearch: React.FC = () => {
                         <div className="flex flex-col items-center gap-6 opacity-40">
                           <Target className="w-16 h-16 text-slate-300" />
                           <div>
-                            <p className="text-xl font-black text-slate-900 tracking-tight">Market Engine Idle</p>
-                            <p className="text-sm font-medium text-slate-400 mt-2">Enter horse industry keywords to identify high-intent targets.</p>
+                            <p className="text-xl font-black text-slate-900 tracking-tight">Recommendation Message</p>
+                            <p className="text-sm font-medium text-slate-400 mt-2">No intelligence yet. Recommend running a market scan.</p>
                           </div>
                         </div>
                       </td>
@@ -383,6 +397,7 @@ const LeadSearch: React.FC = () => {
                  )}
               </tbody>
            </table>
+           )}
         </div>
       </main>
     </div>

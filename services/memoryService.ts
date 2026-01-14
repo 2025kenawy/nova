@@ -12,6 +12,26 @@ import { MemoryEntry } from '../types';
 
 let localMemory: MemoryEntry[] = [];
 
+/**
+ * Helper to safely execute Supabase calls with silent local fallbacks
+ */
+async function safeDbCall<T>(call: () => Promise<{ data: T | null; error: any }>, fallback: T): Promise<T> {
+  try {
+    const { data, error } = await call();
+    if (error) {
+      // Log only on real database errors, not network failures
+      if (!error.message?.includes('failed to fetch') && !error.message?.includes('Load failed')) {
+        console.warn("Nova Intelligence: Supabase operational error handled via fallback.");
+      }
+      return fallback;
+    }
+    return data ?? fallback;
+  } catch (err) {
+    // Silent catch for "TypeError: Load failed" which usually indicates network/URL issues
+    return fallback;
+  }
+}
+
 export const saveMemory = async (memory: Omit<MemoryEntry, 'id' | 'timestamp'>) => {
   const entry = {
     entityId: memory.entityId,
@@ -28,53 +48,25 @@ export const saveMemory = async (memory: Omit<MemoryEntry, 'id' | 'timestamp'>) 
   } as MemoryEntry;
   localMemory.push(fallbackEntry);
 
-  const { data, error } = await supabase
-    .from('memories')
-    .insert([entry])
-    .select()
-    .single();
-
-  if (error) {
-    // FIX: Extract actual error message or stringify the object
-    console.error("Supabase Persistence Failure:", error.message || JSON.stringify(error));
-    return fallbackEntry;
-  }
-
-  return data as MemoryEntry;
+  return safeDbCall(
+    () => supabase.from('memories').insert([entry]).select().single(),
+    fallbackEntry
+  );
 };
 
 export const getMemoriesForEntity = async (entityId: string): Promise<MemoryEntry[]> => {
-  const { data, error } = await supabase
-    .from('memories')
-    .select('*')
-    .eq('entityId', entityId)
-    .order('timestamp', { ascending: true });
-
-  if (error) {
-    console.error("Supabase Retrieval Error:", error.message || JSON.stringify(error));
-    // Fallback to searching local session memory
-    return localMemory.filter(m => m.entityId === entityId);
-  }
-
-  return (data as MemoryEntry[]) || [];
+  return safeDbCall(
+    () => supabase.from('memories').select('*').eq('entityId', entityId).order('timestamp', { ascending: true }),
+    localMemory.filter(m => m.entityId === entityId)
+  );
 };
 
 export const getAllMemories = async (): Promise<MemoryEntry[]> => {
-  const { data, error } = await supabase
-    .from('memories')
-    .select('*')
-    .order('timestamp', { ascending: false })
-    .limit(100);
-
-  if (error) {
-    // FIX: Extract actual error message
-    console.error("Supabase Global Audit Error:", error.message || JSON.stringify(error));
-    // Fallback: Return sorted local memory so the dashboard isn't empty
-    return [...localMemory].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  }
-
-  // Merge results if needed, or prefer DB
-  return (data as MemoryEntry[]) || [];
+  const fallback = [...localMemory].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return safeDbCall(
+    () => supabase.from('memories').select('*').order('timestamp', { ascending: false }).limit(100),
+    fallback
+  );
 };
 
 export const getMemoryContext = async (entityId: string): Promise<string> => {

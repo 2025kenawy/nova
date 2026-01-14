@@ -1,40 +1,50 @@
 
 import React, { useState } from 'react';
 import { 
-  Search, 
-  LayoutDashboard, 
-  List, 
-  Mail, 
-  BrainCircuit, 
-  Settings, 
-  Bell, 
-  Users, 
-  Building2,
-  ChevronDown,
-  Filter,
-  MoreHorizontal,
-  Plus,
-  Rocket
+  Rocket,
+  Search
 } from 'lucide-react';
-import { ViewType, Lead, Company } from './types';
+import { ViewType, Lead } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import LeadSearch from './components/LeadSearch';
 import AIBrain from './components/AIBrain';
+import NovaLeads from './components/NovaLeads';
+import NovaBrief from './components/NovaBrief';
+import CrmDetail from './components/CrmDetail';
+import ExpoLanding from './components/ExpoLanding';
 
 const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<ViewType>(ViewType.SEARCH);
+  const [activeView, setActiveView] = useState<ViewType>(ViewType.NOVA_BRIEF);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const navigateToLead = (id: string) => {
+    setSelectedLeadId(id);
+    setActiveView(ViewType.CRM_DETAIL);
+  };
 
   const renderContent = () => {
     switch (activeView) {
+      case ViewType.NOVA_BRIEF:
+        return <NovaBrief onNavigate={setActiveView} />;
       case ViewType.DASHBOARD:
         return <Dashboard />;
       case ViewType.SEARCH:
         return <LeadSearch />;
+      case ViewType.NOVA_LEADS:
+        return <NovaLeads onSelectLead={navigateToLead} />;
+      case ViewType.CRM_DETAIL:
+        return selectedLeadId ? (
+          <CrmDetail leadId={selectedLeadId} onBack={() => setActiveView(ViewType.NOVA_LEADS)} />
+        ) : (
+          <NovaLeads onSelectLead={navigateToLead} />
+        );
       case ViewType.AI_BRAIN:
         return <AIBrain />;
+      case ViewType.EXPO_LANDING:
+        return <ExpoLanding />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-500">

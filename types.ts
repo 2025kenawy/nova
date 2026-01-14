@@ -17,6 +17,18 @@ export type HorseCategory =
   | 'Media & Influence'    // Federations, Media
   | 'None';
 
+export type LeadStatus = 'DISCOVERED' | 'SAVED' | 'IGNORED' | 'ARCHIVED' | 'Enriched';
+
+export type RelationshipTemperature = 'Cold' | 'Warm' | 'Hot';
+
+export interface Reminder {
+  id: string;
+  date: string;
+  type: 'Follow-up' | 'Event Check-in' | 'Meeting' | 'Contract Review';
+  note: string;
+  isCompleted: boolean;
+}
+
 export type HorseSubCategory = 
   | 'Private Stable' | 'Professional Training Stable' | 'Racing Stable' | 'Endurance Stable' | 'Show Jumping Stable'
   | 'Breeding Farm' | 'Stud Farm' | 'Young Horse Farm' | 'Rehabilitation Farm'
@@ -91,17 +103,25 @@ export interface Lead {
   roleType: 'Decision Maker' | 'Influencer' | 'Gatekeeper' | 'Irrelevant';
   companyId: string;
   companyName: string;
+  companyDomain?: string;
   email: string;
   linkedin: string;
   twitter?: string;
   facebook?: string;
   instagram?: string;
-  status: 'New' | 'Contacted' | 'Replied' | 'Enriched';
+  status: LeadStatus;
   dealStage: DealStage;
   horseCategory?: HorseCategory;
   horseSubCategory?: HorseSubCategory;
   isSaved?: boolean;
   scoring?: LeadScoring;
+  discoveredAt?: string;
+  notes?: string;
+  whatsapp?: string;
+  whatsappPermission?: boolean;
+  temperature?: RelationshipTemperature;
+  source?: string;
+  reminders?: Reminder[];
 }
 
 export interface Mission {
@@ -124,8 +144,12 @@ export interface MemoryEntry {
 }
 
 export enum ViewType {
+  NOVA_BRIEF = 'NOVA_BRIEF',
   SEARCH = 'SEARCH',
   DASHBOARD = 'DASHBOARD',
+  NOVA_LEADS = 'NOVA_LEADS',
   LISTS = 'LISTS',
-  AI_BRAIN = 'AI_BRAIN'
+  AI_BRAIN = 'AI_BRAIN',
+  CRM_DETAIL = 'CRM_DETAIL',
+  EXPO_LANDING = 'EXPO_LANDING'
 }

@@ -6,12 +6,11 @@ import { Lead, Company, Mission, DealStage, HorseCategory, HorseSubCategory, Buy
  * NOVA CONSOLIDATED AI SERVICE
  * Pure Gemini Architecture.
  * Sole source of truth for market intelligence and strategic reasoning.
+ * Configured for Arab-Market Horse Industry Dominance.
  */
 
-const GEMINI_API_KEY = process.env.API_KEY || "";
-const GEMINI_MODEL = 'gemini-3-flash-preview';
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+const GEMINI_MODEL = 'gemini-3-pro-preview';
 
 // --- INTERNAL UTILITIES ---
 
@@ -57,11 +56,11 @@ export const serverSearchCompanies = async (keyword: string, location: string, i
   return callWithRetry(async () => {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: `Identify high-tier equine entities for keyword: "${keyword}" in "${location}". Scan broadly to find at least 15-20 relevant entities.`,
+      contents: `Identify 15-25 high-tier equine entities and horse product buyers (stables, feed importers, tack shops, breeding farms) for keyword: "${keyword}" in "${location}". Ensure domain names are valid and focus strictly on the Arab market and GCC region.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        systemInstruction: `You are Nova Market Core. Focus on the horse industry. Owner Identity:\n${identityContext}`
+        systemInstruction: `You are Nova Arab-Market Intelligence. Your goal is to identify buyers, users, and distributors of horse products in Arab countries. Focus on high-value relationships. Output valid JSON. Owner Identity:\n${identityContext}`
       }
     });
     
@@ -90,11 +89,11 @@ export const serverQualifyCompany = async (company: Company): Promise<Partial<Co
   return callWithRetry(async () => {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: `Analyze equine market standing for: ${company.name} (${company.domain}).`,
+      contents: `Analyze Arab market standing and horse product buying intent for: ${company.name} (${company.domain}).`,
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        systemInstruction: `You are Nova Qualification Engine. Rate authority and intent within the horse industry.`
+        systemInstruction: `You are Nova Qualification Engine. Focus on Arab market authority and intent to purchase/use equine products.`
       }
     });
     return JSON.parse(response.text || "{}");
@@ -123,11 +122,11 @@ export const serverFindDecisionMakers = async (company: Company): Promise<Lead[]
   return callWithRetry(async () => {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: `Identify key decision makers at ${company.name} involved in equine operations. Include social media links (LinkedIn, Twitter, Facebook, Instagram) if available.`,
+      contents: `Identify key decision makers at ${company.name} who manage horse operations or purchase equine supplies in the Arab market.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        systemInstruction: `You are Nova Lead Finder. Output only horse-relevant personnel. For social links, provide full URLs or 'N/A'.`
+        systemInstruction: `You are Nova Lead Finder. Identify the correct personnel for partnership building in the Arab horse industry.`
       }
     });
     const results = JSON.parse(response.text || "[]");
@@ -136,14 +135,12 @@ export const serverFindDecisionMakers = async (company: Company): Promise<Lead[]
       id: `lead-${Date.now()}-${i}`,
       companyId: company.id,
       companyName: company.name,
-      status: 'New' as Lead['status'],
+      status: 'DISCOVERED' as Lead['status'],
       dealStage: 'Discovery' as DealStage,
       email: 'verified@nova.secure'
     }));
   });
 };
-
-// --- STRATEGIC BRAIN (GEMINI NATIVE) ---
 
 export interface PriorityAnalysisRaw {
   horseAuthorityScore: number;
@@ -152,6 +149,9 @@ export interface PriorityAnalysisRaw {
   dealStage: DealStage;
   recommendedAction: "email" | "linkedin" | "wait";
   explanation: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
 }
 
 export const serverAnalyzePriority = async (leadData: Lead, memoryContext: string): Promise<PriorityAnalysisRaw> => {
@@ -163,18 +163,21 @@ export const serverAnalyzePriority = async (leadData: Lead, memoryContext: strin
       horseEngagementScore: { type: Type.NUMBER },
       dealStage: { type: Type.STRING },
       recommendedAction: { type: Type.STRING },
-      explanation: { type: Type.STRING }
+      explanation: { type: Type.STRING },
+      twitter: { type: Type.STRING },
+      facebook: { type: Type.STRING },
+      instagram: { type: Type.STRING }
     },
     required: ["horseAuthorityScore", "horseIntentScore", "horseEngagementScore", "dealStage", "recommendedAction", "explanation"]
   };
 
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: `Lead: ${leadData.firstName} ${leadData.lastName} (${leadData.title}) at ${leadData.companyName}. Market Context: ${memoryContext}`,
+    contents: `Lead: ${leadData.firstName} ${leadData.lastName} (${leadData.title}) at ${leadData.companyName}. Analyze relationship potential in the Arab equestrian market. Context: ${memoryContext}.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: schema,
-      systemInstruction: "You are the Nova Strategic Brain. Analyze this lead's value in the equestrian market. Output valid JSON scores 0-100."
+      systemInstruction: "You are the Nova Strategic Brain. Evaluate relationship value within Arab horse industry networks."
     }
   });
 
@@ -184,9 +187,9 @@ export const serverAnalyzePriority = async (leadData: Lead, memoryContext: strin
 export const serverGenerateOutreach = async (mission: Mission, identityContext: string): Promise<string> => {
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: `Draft for: ${mission.contactName} at ${mission.company}. Intent: ${mission.explanation}. Action: ${mission.recommendedAction}.`,
+    contents: `Draft manual outreach for: ${mission.contactName} at ${mission.company} in the Arab market.`,
     config: {
-      systemInstruction: `You are a high-tier equestrian strategic advisor. Identity: ${identityContext}. Draft concise, high-status outreach. Format: 'Subject:' line first, then 'Body:'.`
+      systemInstruction: `You are a professional equestrian advisor for the Arab market. Focus on building long-term networks. Outreach must be respectful and manual. Identity: ${identityContext}. Format: 'Subject:' line first, then 'Body:'.`
     }
   });
 
@@ -218,11 +221,11 @@ export const serverGenerateDailyMissions = async (contextLeads: string = "", lim
 
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: `Synthesize up to ${limit} high-impact GCC horse industry missions. ${contextLeads ? `Context: ${contextLeads}` : "Broad search required."}`,
+    contents: `Synthesize ${limit} Arab-market horse industry relationship missions. ${contextLeads}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: schema,
-      systemInstruction: "You are Nova Mission Control. Synthesize high-impact equestrian signals into actionable strategic missions."
+      systemInstruction: "You are Nova Mission Control. Focus on relationship-first missions in GCC and Arab countries."
     }
   });
 
@@ -235,7 +238,7 @@ export const serverAskStrategicBrain = async (prompt: string, identityContext: s
     model: GEMINI_MODEL,
     contents: prompt,
     config: {
-      systemInstruction: `You are the Nova Strategic Brain. Identity: ${identityContext}. Be blunt, strategic, and professional. Focus solely on business growth in the equestrian sector.`
+      systemInstruction: `You are the Nova Strategic Brain. Expert in Arab equestrian markets and product trade.`
     }
   });
 

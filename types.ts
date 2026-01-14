@@ -29,6 +29,23 @@ export interface Reminder {
   isCompleted: boolean;
 }
 
+export interface EquineEvent {
+  id: string;
+  name: string;
+  dates: string;
+  city: string;
+  country: string;
+  organizer: string;
+  website: string;
+  email?: string;
+  linkedin?: string;
+  category: string;
+  month: string;
+  year: number;
+  discoveredAt: string;
+  reminders?: Reminder[];
+}
+
 export type HorseSubCategory = 
   | 'Private Stable' | 'Professional Training Stable' | 'Racing Stable' | 'Endurance Stable' | 'Show Jumping Stable'
   | 'Breeding Farm' | 'Stud Farm' | 'Young Horse Farm' | 'Rehabilitation Farm'

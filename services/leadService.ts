@@ -2,7 +2,8 @@
 import { supabase } from '../lib/supabase';
 import { Lead, LeadStatus, RelationshipTemperature, Reminder } from '../types';
 
-let localLeads: Lead[] = [];
+let localDiscoveryLeads: Lead[] = [];
+let localCrmContacts: Lead[] = [];
 
 async function safeDbCall<T>(call: () => Promise<{ data: T | null; error: any }>, fallback: T): Promise<T> {
   try {
@@ -15,12 +16,13 @@ async function safeDbCall<T>(call: () => Promise<{ data: T | null; error: any }>
 }
 
 export const leadService = {
+  // --- Discovery Leads (Nova Leads) ---
   async saveLead(lead: Lead): Promise<void> {
-    const exists = localLeads.find(l => l.id === lead.id || (l.email === lead.email && l.email !== 'verified@nova.secure'));
+    const exists = localDiscoveryLeads.find(l => l.id === lead.id || (l.email === lead.email && l.email !== 'verified@nova.secure'));
     if (exists) return;
 
-    const entry = { ...lead, discoveredAt: new Date().toISOString(), temperature: lead.temperature || 'Cold', reminders: lead.reminders || [] };
-    localLeads.push(entry);
+    const entry = { ...lead, discoveredAt: new Date().toISOString(), status: 'DISCOVERED' as LeadStatus };
+    localDiscoveryLeads.push(entry);
 
     await safeDbCall(
       () => supabase.from('leads').upsert([entry]),
@@ -31,22 +33,54 @@ export const leadService = {
   async getAllLeads(): Promise<Lead[]> {
     return safeDbCall(
       () => supabase.from('leads').select('*').order('discoveredAt', { ascending: false }),
-      [...localLeads].sort((a, b) => (b.discoveredAt || '').localeCompare(a.discoveredAt || ''))
+      [...localDiscoveryLeads].sort((a, b) => (b.discoveredAt || '').localeCompare(a.discoveredAt || ''))
+    );
+  },
+
+  // --- CRM Contacts (Saved CRM) ---
+  async promoteToCrm(lead: Lead): Promise<void> {
+    const entry = { 
+      ...lead, 
+      status: 'SAVED' as LeadStatus, 
+      temperature: lead.temperature || 'Cold',
+      isSaved: true 
+    };
+    
+    // Add to local CRM
+    if (!localCrmContacts.find(c => c.id === entry.id)) {
+      localCrmContacts.push(entry);
+    }
+
+    // Persist to CRM table
+    await safeDbCall(
+      () => supabase.from('crm_contacts').upsert([entry]),
+      null
+    );
+
+    // Update original lead status in discovery table
+    await this.updateLeadStatus(lead.id, 'SAVED');
+  },
+
+  async getCrmContacts(): Promise<Lead[]> {
+    return safeDbCall(
+      () => supabase.from('crm_contacts').select('*').order('discoveredAt', { ascending: false }),
+      [...localCrmContacts].sort((a, b) => (b.discoveredAt || '').localeCompare(a.discoveredAt || ''))
     );
   },
 
   async getLeadById(id: string): Promise<Lead | null> {
-    const local = localLeads.find(l => l.id === id);
+    // Check both stores
+    const local = localDiscoveryLeads.find(l => l.id === id) || localCrmContacts.find(l => l.id === id);
     if (local) return local;
 
-    return safeDbCall(
-      () => supabase.from('leads').select('*').eq('id', id).single(),
-      null
-    );
+    const crmData = await safeDbCall(() => supabase.from('crm_contacts').select('*').eq('id', id).single(), null);
+    if (crmData) return crmData;
+
+    return safeDbCall(() => supabase.from('leads').select('*').eq('id', id).single(), null);
   },
 
   async updateLeadStatus(id: string, status: LeadStatus): Promise<void> {
-    const lead = localLeads.find(l => l.id === id);
+    const lead = localDiscoveryLeads.find(l => l.id === id);
     if (lead) lead.status = status;
 
     await safeDbCall(
@@ -56,46 +90,51 @@ export const leadService = {
   },
 
   async updateLeadTemperature(id: string, temperature: RelationshipTemperature): Promise<void> {
-    const lead = localLeads.find(l => l.id === id);
+    // Update in CRM only
+    const lead = localCrmContacts.find(l => l.id === id);
     if (lead) lead.temperature = temperature;
 
     await safeDbCall(
-      () => supabase.from('leads').update({ temperature }).eq('id', id),
+      () => supabase.from('crm_contacts').update({ temperature }).eq('id', id),
       null
     );
   },
 
   async updateLeadNotes(id: string, notes: string): Promise<void> {
-    const lead = localLeads.find(l => l.id === id);
+    const lead = localCrmContacts.find(l => l.id === id);
     if (lead) lead.notes = notes;
 
     await safeDbCall(
-      () => supabase.from('leads').update({ notes }).eq('id', id),
+      () => supabase.from('crm_contacts').update({ notes }).eq('id', id),
       null
     );
   },
 
   async updateLeadReminders(id: string, reminders: Reminder[]): Promise<void> {
-    const lead = localLeads.find(l => l.id === id);
+    const lead = localCrmContacts.find(l => l.id === id);
     if (lead) lead.reminders = reminders;
 
     await safeDbCall(
-      () => supabase.from('leads').update({ reminders }).eq('id', id),
+      () => supabase.from('crm_contacts').update({ reminders }).eq('id', id),
       null
     );
   },
 
   async bulkUpdateLeadStatus(ids: string[], status: LeadStatus): Promise<void> {
-    localLeads = localLeads.map(l => ids.includes(l.id) ? { ...l, status } : l);
-
-    await safeDbCall(
-      () => supabase.from('leads').update({ status }).in('id', ids),
-      null
-    );
+    if (status === 'SAVED') {
+      const allLeads = await this.getAllLeads();
+      const selected = allLeads.filter(l => ids.includes(l.id));
+      for (const lead of selected) {
+        await this.promoteToCrm(lead);
+      }
+    } else {
+      localDiscoveryLeads = localDiscoveryLeads.map(l => ids.includes(l.id) ? { ...l, status } : l);
+      await safeDbCall(() => supabase.from('leads').update({ status }).in('id', ids), null);
+    }
   },
 
   async getDiscoveryInbox(): Promise<Lead[]> {
     const leads = await this.getAllLeads();
-    return leads.filter(l => l.status === 'DISCOVERED');
+    return leads.filter(l => l.status === 'DISCOVERED' || l.status === 'Enriched');
   }
 };

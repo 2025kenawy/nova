@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Radar, BrainCircuit, 
   Loader2, X, ChevronRight, CheckCircle2,
@@ -9,14 +9,6 @@ import {
 import { novaOrchestrator } from '../services/novaOrchestrator';
 import { WALID_IDENTITY } from '../services/identityService';
 import { Mission } from '../types';
-
-const ThinkingOverlay = ({ stage }: { stage: string }) => (
-  <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border border-slate-200 shadow-sm">
-    <BrainCircuit className="w-16 h-16 text-indigo-600 animate-pulse mb-6" />
-    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">{stage}</h3>
-    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-2">Nova Inference Engine Active</p>
-  </div>
-);
 
 interface MissionCardProps {
   mission: Mission;
@@ -74,28 +66,44 @@ const MissionCard: React.FC<MissionCardProps> = ({ mission, onExecute }) => {
 
 const Dashboard: React.FC = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [loadingStage, setLoadingStage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [executionResult, setExecutionResult] = useState<{ mission: Mission; response: string } | null>(null);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const pollInterval = useRef<number | null>(null);
 
   useEffect(() => {
-    loadMissions();
-  }, []);
+    loadSavedMissions();
+    
+    // Establish deep polling for background intelligence updates
+    pollInterval.current = window.setInterval(() => {
+      const activeRefresh = novaOrchestrator.isRefreshing();
+      setIsRefreshing(activeRefresh);
+      
+      // Load missions if we have none or if the brain just finished a cycle
+      if (missions.length === 0 || !activeRefresh) {
+        loadSavedMissions();
+      }
+    }, 4000);
 
-  const loadMissions = async () => {
-    setLoadingStage('Synthesizing Global Markets');
+    return () => {
+      if (pollInterval.current) clearInterval(pollInterval.current);
+    };
+  }, [missions.length]);
+
+  const loadSavedMissions = async () => {
     const results = await novaOrchestrator.getDailyCommands();
-    setMissions(results || []);
-    setLoadingStage(null);
+    if (results && results.length > 0) {
+      setMissions(results);
+    }
   };
 
-  const handleRecalibrate = async () => {
-    setLoadingStage('Forcing Full Intelligence Pipeline');
-    const results = await novaOrchestrator.runFullIntelligencePipeline();
-    setMissions(results || []);
-    setLoadingStage(null);
+  const handleWakeUp = () => {
+    setIsRefreshing(true);
+    novaOrchestrator.recalibrateIntelligence();
+    // Immediate optimistic refresh
+    setTimeout(loadSavedMissions, 1500);
   };
 
   const handleExecuteMission = async (mission: Mission) => {
@@ -142,17 +150,27 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center gap-2 ml-14">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">{WALID_IDENTITY.fullName}'s Secure Node</p>
-            <span className="text-slate-200 mx-2">|</span>
-            <span className="text-indigo-500 font-black uppercase text-[10px] tracking-[0.3em] flex items-center gap-1">
-              Resend Delivery Active
-            </span>
+            {isRefreshing && (
+               <>
+                 <span className="text-slate-200 mx-2">|</span>
+                 <span className="text-indigo-500 font-black uppercase text-[10px] tracking-[0.3em] animate-pulse">
+                   Big Brain Processing...
+                 </span>
+               </>
+            )}
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <button onClick={handleRecalibrate} className="px-6 py-4 bg-white rounded-full border border-slate-200 shadow-sm hover:shadow-lg transition-all flex items-center gap-4">
-             <Radar className="w-5 h-5 text-indigo-600 animate-spin-slow" />
-             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Refresh Intelligence</span>
+          <button 
+            onClick={handleWakeUp} 
+            disabled={isRefreshing}
+            className={`px-6 py-4 bg-white rounded-full border border-slate-200 shadow-sm hover:shadow-lg transition-all flex items-center gap-4 disabled:opacity-50`}
+          >
+             <Radar className={`w-5 h-5 text-indigo-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">
+               {isRefreshing ? 'Thinking...' : 'Wake Up Big Brain'}
+             </span>
           </button>
         </div>
       </div>
@@ -160,29 +178,42 @@ const Dashboard: React.FC = () => {
       <div className="space-y-8">
         <div className="flex items-center justify-between px-2">
            <h3 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.4em] flex items-center gap-3">
-             <Calendar className="w-4 h-4 text-indigo-600" /> Active Strategic Missions
+             <Calendar className="w-4 h-4 text-indigo-600" /> Autonomous Daily Missions
            </h3>
         </div>
 
-        {loadingStage ? (
-          <ThinkingOverlay stage={loadingStage} />
-        ) : missions.length > 0 ? (
+        {missions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {missions.map((m, i) => <MissionCard key={i} mission={m} onExecute={handleExecuteMission} />)}
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-[3rem] p-24 text-center flex flex-col items-center gap-6 shadow-sm">
              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 shadow-inner">
-                <Target className="w-10 h-10 text-indigo-500 animate-pulse" />
+                {isRefreshing ? (
+                  <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+                ) : (
+                  <Target className="w-10 h-10 text-indigo-500 animate-pulse" />
+                )}
              </div>
              <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Recommendation Message</h3>
-                <p className="text-slate-400 font-medium max-w-sm mt-3 leading-relaxed text-sm">No intelligence yet. Recommend running a market scan.</p>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">
+                  {isRefreshing ? 'Intelligence Synthesis' : 'Big Brain Standby'}
+                </h3>
+                <p className="text-slate-400 font-medium max-w-sm mt-3 leading-relaxed text-sm">
+                  {isRefreshing 
+                    ? 'Nova is currently infiltrating Arab markets and precomputing 33 daily strategic missions in the background.' 
+                    : 'No intelligence precomputed for today. Activate the Big Brain to initiate the autonomous discovery pipeline.'}
+                </p>
              </div>
-             <button onClick={handleRecalibrate} className="mt-4 px-10 py-4 bg-indigo-600 text-white font-black text-[10px] rounded-xl uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-3">
-               <Rocket className="w-4 h-4" />
-               Recalibrate Intelligence
-             </button>
+             {!isRefreshing && (
+               <button 
+                 onClick={handleWakeUp} 
+                 className="mt-4 px-10 py-4 bg-indigo-600 text-white font-black text-[10px] rounded-xl uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-3"
+               >
+                 <Rocket className="w-4 h-4" />
+                 Initialize Big Brain
+               </button>
+             )}
           </div>
         )}
       </div>
@@ -194,8 +225,8 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-4">
                  <BadgeDollarSign className="w-8 h-8 text-emerald-400" />
                  <div>
-                    <h3 className="text-2xl font-black uppercase tracking-tight">Approve Outreach</h3>
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">To: {executionResult.mission.contactName}</p>
+                    <h3 className="text-2xl font-black uppercase tracking-tight">Strategy Approval</h3>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Recipient: {executionResult.mission.contactName}</p>
                  </div>
               </div>
               <button onClick={() => setExecutionResult(null)} className="p-3 hover:bg-white/10 rounded-full transition-all text-slate-400"><X className="w-8 h-8" /></button>
@@ -208,7 +239,7 @@ const Dashboard: React.FC = () => {
               {emailStatus === 'error' && (
                 <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600">
                   <ShieldAlert className="w-5 h-5 shrink-0" />
-                  <p className="text-xs font-bold">Resend Error: System cooling down or domain limit reached.</p>
+                  <p className="text-xs font-bold">Resend Fault: Connection error or domain limit reached.</p>
                 </div>
               )}
             </div>
@@ -217,7 +248,7 @@ const Dashboard: React.FC = () => {
                  onClick={() => setExecutionResult(null)} 
                  className="px-8 py-4 bg-slate-100 text-slate-600 font-black text-[10px] rounded-xl uppercase tracking-widest hover:bg-slate-200 transition-all"
                >
-                 Dismiss
+                 Discard
                </button>
                <button 
                  onClick={handleSendEmail}
@@ -227,7 +258,7 @@ const Dashboard: React.FC = () => {
                  }`}
                >
                  {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : emailStatus === 'success' ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                 {emailStatus === 'success' ? 'Sent' : 'Send via Resend'}
+                 {emailStatus === 'success' ? 'Dispatched' : 'Send Strategic Mail'}
                </button>
             </div>
           </div>
@@ -238,7 +269,7 @@ const Dashboard: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="w-16 h-16 animate-spin text-indigo-500" />
-            <p className="text-white font-black uppercase tracking-[0.3em] text-[10px]">Nova Drafting Outreach...</p>
+            <p className="text-white font-black uppercase tracking-[0.3em] text-[10px]">Big Brain Drafting Outreach...</p>
           </div>
         </div>
       )}

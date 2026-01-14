@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { leadService } from '../services/leadService';
+import { eventService } from '../services/eventService';
 import { novaOrchestrator } from '../services/novaOrchestrator';
 import { WALID_IDENTITY } from '../services/identityService';
 
@@ -24,7 +25,8 @@ const NovaBrief: React.FC<NovaBriefProps> = ({ onNavigate }) => {
   const [stats, setStats] = useState({
     newLeads: 0,
     recommendedActions: 0,
-    remindersToday: 0
+    remindersToday: 0,
+    eventLinkedReminders: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,17 +36,31 @@ const NovaBrief: React.FC<NovaBriefProps> = ({ onNavigate }) => {
       const leads = await leadService.getDiscoveryInbox();
       const missions = await novaOrchestrator.getDailyCommands();
       const allLeads = await leadService.getAllLeads();
+      const allEvents = await eventService.getAllEvents();
       
       const today = new Date().toISOString().split('T')[0];
-      const reminders = allLeads.reduce((acc, lead) => {
+      
+      let eventLinkedCount = 0;
+
+      const leadReminders = allLeads.reduce((acc, lead) => {
         const todayRems = (lead.reminders || []).filter(r => r.date === today && !r.isCompleted);
+        if (lead.source?.includes('Expo') && todayRems.length > 0) {
+          eventLinkedCount += todayRems.length;
+        }
+        return acc + todayRems.length;
+      }, 0);
+
+      const eventReminders = allEvents.reduce((acc, ev) => {
+        const todayRems = (ev.reminders || []).filter(r => r.date === today && !r.isCompleted);
+        eventLinkedCount += todayRems.length;
         return acc + todayRems.length;
       }, 0);
 
       setStats({
         newLeads: leads.length,
         recommendedActions: missions.length,
-        remindersToday: reminders
+        remindersToday: leadReminders + eventReminders,
+        eventLinkedReminders: eventLinkedCount
       });
       setIsLoading(false);
     };
@@ -73,7 +89,7 @@ const NovaBrief: React.FC<NovaBriefProps> = ({ onNavigate }) => {
       value: stats.remindersToday,
       icon: Bell,
       color: 'bg-amber-500',
-      description: 'Critical follow-ups scheduled for today.',
+      description: `${stats.eventLinkedReminders > 0 ? `${stats.eventLinkedReminders} linked to Expo events.` : 'Critical follow-ups for today.'}`,
       view: ViewType.NOVA_LEADS
     }
   ];
@@ -151,7 +167,9 @@ const NovaBrief: React.FC<NovaBriefProps> = ({ onNavigate }) => {
           <div className="flex-1">
             <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Expo Hub</h3>
             <p className="text-slate-400 text-[10px] font-medium leading-relaxed max-w-md">
-              Review event context and exhibition materials.
+              {stats.eventLinkedReminders > 0 
+                ? `${stats.eventLinkedReminders} active follow-ups linked to exhibitions.`
+                : "Review event context and exhibition materials."}
             </p>
             <button 
               onClick={() => onNavigate(ViewType.EXPO_LANDING)}

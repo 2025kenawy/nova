@@ -26,18 +26,17 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
 
   const loadLeads = async () => {
     setIsLoading(true);
-    const data = await leadService.getAllLeads();
+    const data = await leadService.getDiscoveryInbox();
     setLeads(data);
     setIsLoading(false);
   };
 
-  const handleUpdateStatus = async (id: string, status: LeadStatus) => {
-    await leadService.updateLeadStatus(id, status);
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
-    // Clear from selection if status changes away from filter
-    if (selectedIds.has(id)) {
+  const handlePromote = async (lead: Lead) => {
+    await leadService.promoteToCrm(lead);
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    if (selectedIds.has(lead.id)) {
       const next = new Set(selectedIds);
-      next.delete(id);
+      next.delete(lead.id);
       setSelectedIds(next);
     }
   };
@@ -47,7 +46,7 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
     setIsBulkOperating(true);
     const idsToSave: string[] = Array.from(selectedIds);
     await leadService.bulkUpdateLeadStatus(idsToSave, 'SAVED');
-    setLeads(prev => prev.map(l => idsToSave.includes(l.id) ? { ...l, status: 'SAVED' } : l));
+    setLeads(prev => prev.filter(l => !idsToSave.includes(l.id)));
     setSelectedIds(new Set());
     setIsBulkOperating(false);
   };
@@ -83,10 +82,10 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
             <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-500/20">
               <Inbox className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Intelligence Inbox</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Intelligence Inbox</h1>
           </div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-16">
-            {leads.length} Persistent Leads Discovered by Nova
+            {leads.length} Discovered Leads • Verification Required
           </p>
         </div>
 
@@ -100,40 +99,23 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
                 className="px-4 py-2 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
                 {isBulkOperating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                Bulk Save to CRM
+                Bulk Promote to CRM
               </button>
             </div>
           )}
-
-          <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl">
-            {['ALL', 'DISCOVERED', 'SAVED', 'IGNORED'].map(f => (
-              <button
-                key={f}
-                onClick={() => {
-                  setFilter(f);
-                  setSelectedIds(new Set());
-                }}
-                className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                  filter === f ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center opacity-40">
           <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-widest">Querying Sovereign DB...</p>
+          <p className="text-[10px] font-black uppercase tracking-widest">Querying Intelligence Store...</p>
         </div>
       ) : filteredLeads.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-20 border-2 border-dashed border-slate-200 rounded-[3rem] bg-white">
           <Sparkles className="w-16 h-16 text-slate-200 mb-6" />
           <h3 className="text-xl font-black text-slate-900">Inbox Clear</h3>
-          <p className="text-slate-400 text-sm font-medium mt-2">Run a Market Search to populate your intelligence inbox.</p>
+          <p className="text-slate-400 text-sm font-medium mt-2">Activate the Big Brain to discover new market entities.</p>
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
@@ -147,7 +129,7 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
                 </th>
                 <th className="px-8 py-5">Lead / Role</th>
                 <th className="px-8 py-5">Organization & Links</th>
-                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5">Value Score</th>
                 <th className="px-8 py-5 text-right">Inbox Actions</th>
               </tr>
             </thead>
@@ -193,55 +175,35 @@ const NovaLeads: React.FC<NovaLeadsProps> = ({ onSelectLead }) => {
                             rel="noopener noreferrer" 
                             className="flex items-center gap-1 text-[9px] font-bold text-slate-400 hover:text-indigo-500 transition-colors"
                           >
-                            <Globe className="w-3.5 h-3.5" /> Website
+                            <Globe className="w-3.5 h-3.5" /> Site
                           </a>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <span className={`px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border ${
-                      lead.status === 'DISCOVERED' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
-                      lead.status === 'SAVED' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                      lead.status === 'Enriched' ? 'bg-purple-50 border-purple-100 text-purple-600' :
-                      'bg-slate-100 border-slate-200 text-slate-500'
-                    }`}>
-                      {lead.status}
-                    </span>
+                    <div className="flex flex-col gap-1 w-24">
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-600 transition-all" style={{ width: `${lead.scoring?.overall || 0}%` }} />
+                      </div>
+                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">{lead.scoring?.overall || 0}% Priority</span>
+                    </div>
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                       <button 
-                        onClick={() => onSelectLead?.(lead.id)}
-                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all"
-                        title="View Dossier"
+                        onClick={() => handlePromote(lead)}
+                        className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all"
+                        title="Save to CRM"
                       >
-                        <FileText className="w-4 h-4" />
+                        <CheckCircle2 className="w-4 h-4" />
                       </button>
-                      {lead.status !== 'SAVED' && (
-                        <button 
-                          onClick={() => handleUpdateStatus(lead.id, 'SAVED')}
-                          className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all"
-                          title="Save to CRM"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                      )}
-                      {lead.status !== 'IGNORED' && (
-                        <button 
-                          onClick={() => handleUpdateStatus(lead.id, 'IGNORED')}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all"
-                          title="Ignore Lead"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      )}
                       <button 
-                        onClick={() => handleUpdateStatus(lead.id, 'ARCHIVED')}
-                        className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-200 transition-all"
-                        title="Archive"
+                        onClick={() => leadService.updateLeadStatus(lead.id, 'IGNORED')}
+                        className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all"
+                        title="Ignore Lead"
                       >
-                        <Archive className="w-4 h-4" />
+                        <XCircle className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Linkedin, Mail, Phone, Globe, Calendar, Clock, Sparkles, 
   CheckCircle2, Ban, History, StickyNote, Target, Zap, ChevronRight,
-  ShieldCheck, MoreHorizontal, User, Thermometer, Bell, Plus, X, Trash2
+  ShieldCheck, MoreHorizontal, User, Thermometer, Bell, Plus, X, Trash2,
+  Ticket
 } from 'lucide-react';
 import { Lead, MemoryEntry, RelationshipTemperature, Reminder } from '../types';
 import { leadService } from '../services/leadService';
@@ -166,14 +167,14 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
                 <span className="text-slate-300">•</span>
                 <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{lead.companyName}</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
                   {lead.horseCategory} • {lead.horseSubCategory || 'Equine Sector'}
                 </p>
                 {lead.source && (
-                  <span className="px-2 py-0.5 bg-slate-100 text-[8px] font-black uppercase tracking-widest text-slate-500 rounded border border-slate-200">
-                    Source: {lead.source}
-                  </span>
+                  <div className="flex items-center gap-2 px-2 py-1 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded border border-indigo-100 w-fit">
+                    <Ticket className="w-3 h-3" /> {lead.source}
+                  </div>
                 )}
               </div>
             </div>
@@ -266,13 +267,15 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
               <div>
                 <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Market Insight</span>
                 <p className="text-sm font-medium text-slate-700 leading-relaxed italic border-l-2 border-indigo-200 pl-6">
-                  "High-authority decision maker in the Middle Eastern equestrian sector. Strong alignment with elite breeding standards and specialized supply logistics."
+                  {lead.source?.includes('Expo') 
+                    ? "Verified stakeholder from Arab Market Expo discovery. Key relationship potential identified within official equine events."
+                    : "High-authority decision maker in the Middle Eastern equestrian sector. Strong alignment with elite breeding standards and specialized supply logistics."}
                 </p>
               </div>
               <div>
                 <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Strategic Alignment</span>
                 <div className="p-6 bg-white/50 rounded-2xl border border-indigo-100 text-xs font-bold text-indigo-900 leading-relaxed">
-                  Focus on heritage value and technical efficiency. Recommended value proposition: Premium logistics for high-value breeding operations.
+                  Focus on heritage value and technical efficiency. {lead.source?.includes('Expo') ? 'Maintain presence at discovered event nodes to strengthen relationship.' : 'Recommended value proposition: Premium logistics for high-value breeding operations.'}
                 </div>
               </div>
             </div>
@@ -297,7 +300,7 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
                 timeline.map((entry, idx) => (
                   <div key={idx} className="flex items-start gap-6 relative z-10">
                     <div className="w-11 h-11 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm shrink-0">
-                      {entry.type === 'action' ? <Zap className="w-4 h-4" /> : entry.type === 'decision' ? <Target className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                      {entry.content.includes('Expo Hub') ? <Ticket className="w-4 h-4 text-indigo-500" /> : entry.type === 'action' ? <Zap className="w-4 h-4" /> : entry.type === 'decision' ? <Target className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
                     <div>
                       <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">
@@ -325,7 +328,9 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
             <div className="mb-8">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Nova Recommended Step</span>
               <p className="text-sm font-bold leading-relaxed">
-                Send professional strategic overview emphasizing logistical efficiency.
+                {lead.source?.includes('Expo') 
+                  ? "Refer to discovered Expo source to establish immediate trust and context."
+                  : "Send professional strategic overview emphasizing logistical efficiency."}
               </p>
             </div>
 

@@ -55,9 +55,11 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     if (!lead) return;
     await leadService.updateLeadWhatsApp(leadId, whatsappNumber, whatsappPermission);
     
+    // Added category: 'ENGAGEMENT' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'action',
+      category: 'ENGAGEMENT',
       content: `Updated WhatsApp details: ${whatsappNumber}. Permission: ${whatsappPermission ? 'GRANTED' : 'REVOKED'}.`
     });
     
@@ -74,9 +76,11 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const handleAction = async (action: 'done' | 'snooze' | 'ignore') => {
     if (!lead) return;
     const content = `Action: [${action.toUpperCase()}] for recommended step.`;
+    // Added category: 'ACTION' to fix missing property error
     const newMemory = await saveMemory({
       entityId: leadId,
       type: 'action',
+      category: 'ACTION',
       content
     });
     setTimeline(prev => [...prev, newMemory]);
@@ -87,9 +91,11 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     await leadService.updateLeadTemperature(leadId, temp);
     setLead(prev => prev ? { ...prev, temperature: temp } : null);
     
+    // Added category: 'SYSTEM' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'decision',
+      category: 'SYSTEM',
       content: `Relationship temperature manually set to ${temp}.`
     });
     // Refresh timeline
@@ -112,9 +118,11 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     await leadService.updateLeadReminders(leadId, updatedReminders);
     setLead(prev => prev ? { ...prev, reminders: updatedReminders } : null);
     
+    // Added category: 'ACTION' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'action',
+      category: 'ACTION',
       content: `Set a ${reminder.type} reminder for ${reminder.date}.`
     });
 

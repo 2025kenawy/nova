@@ -7,21 +7,21 @@ export type DealStage =
   | 'Closing / Contract' 
   | 'None'
   | 'Saved'
-  | 'Strategic'; // Added Strategic stage
+  | 'Strategic';
 
 export type HorseCategory = 
-  | 'Core Operations'      // Stables, Farms, Racing, Clubs
-  | 'Health & Performance' // Vets, Nutrition, Labs
-  | 'Supply & Trade'       // Distributors, Manufacturers, Retail
-  | 'Gov & Elite'          // Royal, Gov Programs
-  | 'Services'             // Logistics, Construction, Care
-  | 'Competition'          // Events, Trainers
-  | 'Media & Influence'    // Federations, Media
+  | 'Core Operations'
+  | 'Health & Performance'
+  | 'Supply & Trade'
+  | 'Gov & Elite'
+  | 'Services'
+  | 'Competition'
+  | 'Media & Influence'
   | 'None';
 
 export type LeadStatus = 'DISCOVERED' | 'SAVED' | 'IGNORED' | 'ARCHIVED' | 'Enriched';
-
 export type RelationshipTemperature = 'Cold' | 'Warm' | 'Hot';
+export type MemoryCategory = 'TRUST_SIGNAL' | 'CULTURAL_NOTE' | 'BUYING_CYCLE' | 'ENGAGEMENT' | 'ACTION' | 'SYSTEM';
 
 export interface Reminder {
   id: string;
@@ -31,47 +31,53 @@ export interface Reminder {
   isCompleted: boolean;
 }
 
-export interface EquineEvent {
+export interface Lead {
   id: string;
-  name: string;
-  dates: string;
-  city: string;
-  country: string;
-  organizer: string;
-  website: string;
-  email?: string;
-  linkedin?: string;
-  category: string;
-  month: string;
-  year: number;
-  discoveredAt: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+  roleType: 'Decision Maker' | 'Influencer' | 'Gatekeeper' | 'Irrelevant';
+  companyId: string;
+  companyName: string;
+  companyDomain?: string;
+  email: string;
+  linkedin: string;
+  status: LeadStatus;
+  dealStage: DealStage;
+  horseCategory?: HorseCategory;
+  // Added horseSubCategory to fix type error in ExpoLanding.tsx
+  horseSubCategory?: string;
+  isSaved?: boolean;
+  scoring?: LeadScoring;
+  discoveredAt?: string;
+  notes?: string;
+  whatsapp?: string;
+  whatsappPermission?: boolean;
+  temperature?: RelationshipTemperature;
+  source?: string;
   reminders?: Reminder[];
+  relationship_stage?: string;
+  saved_at?: string;
+  strategic_intent?: string;
+  nova_confidence?: number;
 }
 
-export type HorseSubCategory = 
-  | 'Private Stable' | 'Professional Training Stable' | 'Racing Stable' | 'Endurance Stable' | 'Show Jumping Stable'
-  | 'Breeding Farm' | 'Stud Farm' | 'Young Horse Farm' | 'Rehabilitation Farm'
-  | 'Flat Racing' | 'Endurance Racing' | 'Camel-Horse Facility'
-  | 'Riding School' | 'Competition Center' | 'Polo Club' | 'Show Jumping Arena'
-  | 'Equine Hospital' | 'Mobile Equine Vet' | 'Gov Veterinary Unit'
-  | 'Nutrition Consultant' | 'Performance Advisor' | 'Rehab Specialist'
-  | 'Blood Testing Lab' | 'Doping Control' | 'Performance Analysis Lab'
-  | 'Feed Distributor' | 'Supplement Importer' | 'Vet Product Distributor'
-  | 'Feed Manufacturer' | 'Supplement Producer' | 'Equipment Producer'
-  | 'Tack Shop' | 'Feed Store' | 'Online Equine Shop'
-  | 'National Stud' | 'Gov Breeding Program' | 'Police/Military Stable'
-  | 'Royal Stable' | 'Private Family Operation' | 'Heritage Breeding Center'
-  | 'Horse Transport' | 'International Shipping' | 'Quarantine Service'
-  | 'Stable Builder' | 'Flooring/Ventilation Specialist' | 'Water/Feeding Systems'
-  | 'Grooming Service' | 'Farrier' | 'Dental Specialist'
-  | 'Racing Event' | 'Endurance Competition' | 'Horse Show'
-  | 'Professional Trainer' | 'Performance Coach'
-  | 'Equestrian Federation' | 'Racing Authority'
-  | 'Horse Magazine' | 'Social Media Influencer' | 'Industry Reporter'
-  | 'None';
+// Added Company interface to fix import errors in LeadSearch, decisionEngine, and aiService
+export interface Company {
+  id: string;
+  name: string;
+  domain: string;
+  location: string;
+  industry: string;
+  horseCategory: HorseCategory;
+  horseSubCategory?: string;
+  buyerRole?: string;
+  size?: string;
+  relevanceScore?: number;
+  revenue?: string;
+}
 
-export type BuyerRole = 'Buyer' | 'Influencer' | 'Gatekeeper';
-
+// Added UserIdentity interface to fix import error in identityService
 export interface UserIdentity {
   fullName: string;
   role: string;
@@ -86,6 +92,35 @@ export interface UserIdentity {
   location: string;
 }
 
+// Added EquineEvent interface to fix import errors in ExpoLanding and eventService
+export interface EquineEvent {
+  id: string;
+  name: string;
+  year: number;
+  month: string;
+  dates: string;
+  city: string;
+  country: string;
+  organizer: string;
+  website?: string;
+  linkedin?: string;
+  email?: string;
+  reminders?: Reminder[];
+}
+
+export interface Mission {
+  id?: string;
+  contactName: string;
+  role: string;
+  company: string;
+  priority: 'High' | 'Medium' | 'Critical';
+  explanation: string;
+  reasoningSource?: string; // Where this advice comes from in memory
+  confidence: number;
+  recommendedAction: string;
+  isSaved?: boolean;
+}
+
 export interface LeadScoring {
   authority: number;
   intent: number;
@@ -93,75 +128,11 @@ export interface LeadScoring {
   overall: number;
 }
 
-export interface Company {
-  id: string;
-  name: string;
-  domain: string;
-  industry: string;
-  size: string;
-  location: string;
-  revenue: string;
-  linkedin?: string;
-  logo?: string;
-  companyScore?: number;
-  horseCategory?: HorseCategory;
-  horseSubCategory?: HorseSubCategory;
-  buyerRole?: BuyerRole;
-  relevanceScore: number;
-  stableCapacity?: string;
-  buyingFocus?: string;
-  qualificationStatus?: 'unqualified' | 'qualifying' | 'qualified';
-  intelligenceSummary?: string;
-}
-
-export interface Lead {
-  id: string;
-  firstName: string;
-  lastName: string;
-  title: string;
-  roleType: 'Decision Maker' | 'Influencer' | 'Gatekeeper' | 'Irrelevant';
-  companyId: string;
-  companyName: string;
-  companyDomain?: string;
-  email: string;
-  linkedin: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  status: LeadStatus;
-  dealStage: DealStage;
-  horseCategory?: HorseCategory;
-  horseSubCategory?: HorseSubCategory;
-  isSaved?: boolean;
-  scoring?: LeadScoring;
-  discoveredAt?: string;
-  notes?: string;
-  whatsapp?: string;
-  whatsappPermission?: boolean;
-  temperature?: RelationshipTemperature;
-  source?: string;
-  reminders?: Reminder[];
-  relationship_stage?: string;
-  saved_at?: string;
-  strategic_intent?: string; // New: capture mission explanation
-  nova_confidence?: number; // New: capture mission confidence
-}
-
-export interface Mission {
-  contactName: string;
-  role: string;
-  company: string;
-  priority: 'High' | 'Medium' | 'Critical';
-  explanation: string;
-  confidence: number;
-  recommendedAction: string;
-  isSaved?: boolean; // New: track UI state
-}
-
 export interface MemoryEntry {
   id: string;
   entityId: string;
   type: string;
+  category: MemoryCategory;
   content: string;
   timestamp: string;
   metadata?: any;

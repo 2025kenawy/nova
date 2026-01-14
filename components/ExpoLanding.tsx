@@ -82,6 +82,7 @@ const ExpoLanding: React.FC = () => {
       status: 'SAVED',
       dealStage: 'Discovery' as DealStage,
       horseCategory: 'Competition',
+      // Corrected: horseSubCategory is now part of types.ts Lead interface
       horseSubCategory: 'Racing Event',
       discoveredAt: new Date().toISOString(),
       temperature: 'Cold',
@@ -91,9 +92,11 @@ const ExpoLanding: React.FC = () => {
 
     try {
       await leadService.saveLead(newLead);
+      // Added category: 'ACTION' to fix missing property error
       await saveMemory({
         entityId: newLead.id,
         type: 'action',
+        category: 'ACTION',
         content: `Saved organizer from Expo Hub. Event: ${event.name}.`
       });
       await new Promise(r => setTimeout(r, 400));
@@ -120,9 +123,11 @@ const ExpoLanding: React.FC = () => {
     await eventService.updateEventReminders(eventId, updatedReminders);
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, reminders: updatedReminders } : e));
     
+    // Added category: 'ACTION' to fix missing property error
     await saveMemory({
       entityId: eventId,
       type: 'action',
+      category: 'ACTION',
       content: `Set a ${reminder.type} reminder for event: ${event.name} on ${reminder.date}.`
     });
 

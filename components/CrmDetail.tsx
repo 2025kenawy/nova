@@ -1,15 +1,17 @@
-
+// Fixed: Added missing Search icon to the lucide-react imports on line 12.
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Linkedin, Mail, Phone, Globe, Calendar, Clock, Sparkles, 
   CheckCircle2, Ban, History, StickyNote, Target, Zap, ChevronRight,
   ShieldCheck, MoreHorizontal, User, Thermometer, Bell, Plus, X, Trash2,
-  Ticket, MessageCircle, Shield, MapPin, Loader2
+  Ticket, MessageCircle, Shield, MapPin, Loader2, Bed, Star, ExternalLink, Map,
+  Plane, PlaneLanding, PlaneTakeoff, Timer, CreditCard, ChevronDown, Search
 } from 'lucide-react';
-import { Lead, MemoryEntry, RelationshipTemperature, Reminder } from '../types';
+import { Lead, MemoryEntry, RelationshipTemperature, Reminder, Hotel, FlightOption } from '../types';
 import { leadService } from '../services/leadService';
 import { getMemoriesForEntity, saveMemory } from '../services/memoryService';
-import { serverGetMapsDirections } from '../services/aiService';
+import { WALID_IDENTITY } from '../services/identityService';
+import { serverGetMapsDirections, serverFindHotelsNearby, serverGetFlightIntelligence } from '../services/aiService';
 
 interface CrmDetailProps {
   leadId: string;
@@ -24,7 +26,13 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const [whatsappPermission, setWhatsappPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMapping, setIsMapping] = useState(false);
+  const [isFindingHotels, setIsFindingHotels] = useState(false);
+  const [isFindingFlights, setIsFindingFlights] = useState(false);
+  const [nearbyHotels, setNearbyHotels] = useState<Hotel[]>([]);
+  const [flightOptions, setFlightOptions] = useState<FlightOption[]>([]);
+  const [showFlightDeck, setShowFlightDeck] = useState(false);
   const [showAddReminder, setShowAddReminder] = useState(false);
+  const [travelDate, setTravelDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     type: 'Follow-up',
     date: new Date().toISOString().split('T')[0],
@@ -51,10 +59,8 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const handleGetDirections = async () => {
     if (!lead) return;
     setIsMapping(true);
-    
     const country = lead.lastName.replace(/[()]/g, '');
     const company = lead.companyName;
-
     const navigateToMap = (lat?: number, lng?: number) => {
       serverGetMapsDirections(company, country, lat, lng).then(url => {
         window.open(url, '_blank');
@@ -65,7 +71,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
         setIsMapping(false);
       });
     };
-
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => navigateToMap(pos.coords.latitude, pos.coords.longitude),
@@ -73,6 +78,36 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
       );
     } else {
       navigateToMap();
+    }
+  };
+
+  const handleFindHotels = async () => {
+    if (!lead) return;
+    setIsFindingHotels(true);
+    const country = lead.lastName.replace(/[()]/g, '');
+    try {
+      const hotels = await serverFindHotelsNearby(lead.companyName, country);
+      setNearbyHotels(hotels);
+    } catch (error) {
+      console.error("Failed to find hotels:", error);
+    } finally {
+      setIsFindingHotels(false);
+    }
+  };
+
+  const handleFindFlights = async () => {
+    if (!lead) return;
+    setIsFindingFlights(true);
+    setShowFlightDeck(true);
+    const destination = lead.lastName.replace(/[()]/g, '');
+    const origin = WALID_IDENTITY.location;
+    try {
+      const flights = await serverGetFlightIntelligence(origin, destination, travelDate);
+      setFlightOptions(flights);
+    } catch (error) {
+      console.error("Failed to find flights:", error);
+    } finally {
+      setIsFindingFlights(false);
     }
   };
 
@@ -84,14 +119,12 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const handleSaveWhatsApp = async () => {
     if (!lead) return;
     await leadService.updateLeadWhatsApp(leadId, whatsappNumber, whatsappPermission);
-    
     await saveMemory({
       entityId: leadId,
       type: 'action',
       category: 'ENGAGEMENT',
       content: `Updated WhatsApp details: ${whatsappNumber}. Permission: ${whatsappPermission ? 'GRANTED' : 'REVOKED'}.`
     });
-    
     const history = await getMemoriesForEntity(leadId);
     setTimeline(history);
   };
@@ -118,7 +151,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     if (!lead) return;
     await leadService.updateLeadTemperature(leadId, temp);
     setLead(prev => prev ? { ...prev, temperature: temp } : null);
-    
     await saveMemory({
       entityId: leadId,
       type: 'decision',
@@ -131,7 +163,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
 
   const handleAddReminder = async () => {
     if (!lead || !newReminder.date || !newReminder.note) return;
-    
     const reminder: Reminder = {
       id: `rem-${Date.now()}`,
       date: newReminder.date,
@@ -139,21 +170,17 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
       note: newReminder.note,
       isCompleted: false
     };
-
     const updatedReminders = [...(lead.reminders || []), reminder];
     await leadService.updateLeadReminders(leadId, updatedReminders);
     setLead(prev => prev ? { ...prev, reminders: updatedReminders } : null);
-    
     await saveMemory({
       entityId: leadId,
       type: 'action',
       category: 'ACTION',
       content: `Set a ${reminder.type} reminder for ${reminder.date}.`
     });
-
     setShowAddReminder(false);
     setNewReminder({ type: 'Follow-up', date: new Date().toISOString().split('T')[0], note: '' });
-    
     const history = await getMemoriesForEntity(leadId);
     setTimeline(history);
   };
@@ -228,19 +255,29 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
                   {lead.horseCategory} • {lead.horseSubCategory || 'Equine Sector'}
                 </p>
-                <div className="flex items-center gap-3">
-                  {lead.source && (
-                    <div className="flex items-center gap-2 px-2 py-1 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded border border-indigo-100 w-fit">
-                      <Ticket className="w-3 h-3" /> {lead.source}
-                    </div>
-                  )}
+                <div className="flex flex-wrap items-center gap-3 mt-2">
                   <button 
                     onClick={handleGetDirections}
                     disabled={isMapping}
-                    className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-[9px] font-black uppercase tracking-widest text-blue-600 rounded border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-[9px] font-black uppercase tracking-widest text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                   >
                     {isMapping ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
-                    Get Directions
+                    Directions
+                  </button>
+                  <button 
+                    onClick={handleFindHotels}
+                    disabled={isFindingHotels}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-[9px] font-black uppercase tracking-widest text-amber-600 rounded-xl border border-amber-100 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                  >
+                    {isFindingHotels ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bed className="w-3 h-3" />}
+                    Hotels
+                  </button>
+                  <button 
+                    onClick={handleFindFlights}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded-xl border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                  >
+                    <Plane className="w-3 h-3" />
+                    Find Flights
                   </button>
                 </div>
               </div>
@@ -265,16 +302,175 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
             <a href={`mailto:${lead.email}`} className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-all shadow-sm">
               <Mail className="w-5 h-5" />
             </a>
-            <button className="p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-all shadow-sm">
-              <Phone className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
 
+      {/* FLIGHT DECK MODAL */}
+      {showFlightDeck && (
+        <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-10 shadow-2xl animate-in slide-in-from-top-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <Plane className="w-64 h-64 text-white" />
+          </div>
+          
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl">
+                <PlaneTakeoff className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tighter text-white leading-none mb-1">Flight Deck</h3>
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Strategic Travel Logistics</p>
+              </div>
+            </div>
+            <button onClick={() => setShowFlightDeck(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
+              <X className="w-6 h-6 text-white" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 mb-10">
+             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Origin Node</span>
+                <p className="text-sm font-black text-white">{WALID_IDENTITY.location}</p>
+             </div>
+             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Destination Node</span>
+                <p className="text-sm font-black text-white">{lead.lastName.replace(/[()]/g, '')}</p>
+             </div>
+             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Travel Date</span>
+                <input 
+                  type="date" 
+                  value={travelDate} 
+                  onChange={(e) => setTravelDate(e.target.value)} 
+                  className="bg-transparent text-white text-sm font-black outline-none w-full cursor-pointer"
+                />
+             </div>
+          </div>
+
+          {isFindingFlights ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 opacity-50">
+               <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+               <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Scanning Regional Air Corridors...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+              {flightOptions.map((option, idx) => (
+                <div key={idx} className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm flex flex-col hover:-translate-y-1 transition-all group">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="px-3 py-1 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded-full border border-indigo-100">
+                      {option.type}
+                    </div>
+                    <PlaneLanding className="w-4 h-4 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                  </div>
+                  
+                  <div className="mb-6">
+                    <h4 className="text-lg font-black text-slate-900 leading-tight mb-1">{option.route}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{option.carrier}</p>
+                  </div>
+
+                  <div className="space-y-4 mb-8">
+                    <div className="flex items-center justify-between text-[11px] font-black">
+                       <div className="flex items-center gap-2 text-slate-500">
+                          <Timer className="w-4 h-4" />
+                          <span>{option.duration}</span>
+                       </div>
+                       <div className="flex items-center gap-2 text-emerald-600">
+                          <CreditCard className="w-4 h-4" />
+                          <span>{option.estimatedPrice}</span>
+                       </div>
+                    </div>
+                  </div>
+
+                  <a 
+                    href={option.searchUrl} 
+                    target="_blank" 
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all text-center flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10"
+                  >
+                    Book Seat <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              ))}
+              {flightOptions.length === 0 && !isFindingFlights && (
+                <button 
+                  onClick={handleFindFlights}
+                  className="col-span-3 py-10 border-2 border-dashed border-white/10 rounded-[3rem] text-slate-500 hover:text-white hover:border-white/30 transition-all flex flex-col items-center gap-4"
+                >
+                  <Search className="w-8 h-8" />
+                  <span className="text-xs font-black uppercase tracking-[0.3em]">Initiate Real-time Flight Scan</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           
+          {/* NEARBY HOTELS SECTION */}
+          {(nearbyHotels.length > 0 || isFindingHotels) && (
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm animate-in slide-in-from-top-4">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Bed className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Accommodations Nearby</h3>
+                </div>
+                {nearbyHotels.length > 0 && (
+                  <button onClick={() => setNearbyHotels([])} className="p-2 hover:bg-slate-100 rounded-lg transition-all">
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
+              </div>
+              
+              {isFindingHotels ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
+                   <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Scanning for Elite Hotels...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {nearbyHotels.map((hotel, idx) => (
+                    <div key={idx} className="p-5 border border-slate-100 bg-slate-50/50 rounded-2xl flex flex-col hover:border-amber-200 hover:bg-amber-50/20 transition-all group">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="text-xs font-black text-slate-900 truncate pr-2">{hotel.name}</h4>
+                        <div className="flex items-center gap-1 text-[10px] font-black text-amber-500">
+                          <Star className="w-3 h-3 fill-amber-500" /> {hotel.rating}
+                        </div>
+                      </div>
+                      <p className="text-[10px] font-medium text-slate-500 line-clamp-2 mb-4 italic leading-relaxed">
+                        {hotel.description}
+                      </p>
+                      <div className="mt-auto grid grid-cols-2 gap-2">
+                        <a 
+                          href={hotel.googleHotelsUrl} 
+                          target="_blank" 
+                          className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all"
+                        >
+                          Google Hotels <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <a 
+                          href={hotel.bookingUrl} 
+                          target="_blank" 
+                          className="flex items-center justify-center gap-2 px-3 py-2 bg-[#003580] text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-md"
+                        >
+                          Booking.com <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <a 
+                          href={hotel.directionsUrl} 
+                          target="_blank" 
+                          className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md col-span-2"
+                        >
+                          Directions to Hotel <Map className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SECTION 2 — RELATIONSHIP STATUS */}
           <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm grid grid-cols-4 gap-6">
             <div>

@@ -1,6 +1,6 @@
 
-import { GoogleGenAI } from "@google/genai";
-import { Lead, Company, Mission, EquineEvent, ARAB_MIDDLE_EAST_COUNTRIES, ALLOWED_EQUINE_CATEGORIES, HorseCategory } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { Lead, Company, Mission, EquineEvent, Hotel, FlightOption, ARAB_MIDDLE_EAST_COUNTRIES, ALLOWED_EQUINE_CATEGORIES, HorseCategory } from "../types";
 
 /**
  * NOVA INTELLIGENCE CORE - GEMINI REGIONAL & VERTICAL ENGINE
@@ -74,7 +74,6 @@ export const serverDiscoverEquineEvents = async (year: number, identityContext: 
     Identity Context: ${identityContext}
   `;
 
-  // Use the Big Brain (Pro) model for complex multi-entity discovery
   const response = await ai.models.generateContent({
     model: STRATEGIC_MODEL,
     contents: prompt,
@@ -118,7 +117,7 @@ export const serverSearchCompanies = async (keyword: string, location: string, i
   `;
 
   const response = await ai.models.generateContent({
-    model: STRATEGIC_MODEL, // Upgraded to Big Brain Pro
+    model: STRATEGIC_MODEL,
     contents: prompt,
     config: { 
       responseMimeType: "application/json",
@@ -155,7 +154,6 @@ export const serverGetMapsDirections = async (companyName: string, country: stri
     }
   });
 
-  // Extract the URL from grounding chunks
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
   if (chunks && chunks.length > 0) {
     for (const chunk of chunks) {
@@ -163,8 +161,107 @@ export const serverGetMapsDirections = async (companyName: string, country: stri
     }
   }
 
-  // Fallback if no specific chunk is found
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${companyName}, ${country}`)}${userLat && userLng ? `&origin=${userLat},${userLng}` : ''}`;
+};
+
+/**
+ * Finds hotels near a specific company using Google Search and provides Booking/Google Hotels links.
+ */
+export const serverFindHotelsNearby = async (companyName: string, country: string): Promise<Hotel[]> => {
+  const prompt = `Find 4 high-quality hotels near "${companyName}" in ${country}. 
+  For each hotel, provide:
+  - Hotel Name
+  - Brief description
+  - Rating
+  - Official Google Hotels URL
+  - Booking.com search URL for this hotel
+  - Google Maps Directions URL from the company to this hotel
+  
+  Format the response as a JSON array of hotel objects.`;
+
+  const response = await ai.models.generateContent({
+    model: STRATEGIC_MODEL,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          hotels: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                description: { type: Type.STRING },
+                rating: { type: Type.STRING },
+                googleHotelsUrl: { type: Type.STRING },
+                bookingUrl: { type: Type.STRING },
+                directionsUrl: { type: Type.STRING }
+              },
+              required: ["name", "description", "rating", "googleHotelsUrl", "bookingUrl", "directionsUrl"]
+            }
+          }
+        },
+        required: ["hotels"]
+      }
+    }
+  });
+
+  const data = JSON.parse(response.text || '{"hotels": []}');
+  return data.hotels || [];
+};
+
+/**
+ * Generates flight intelligence for travel from user's location to lead/event location.
+ */
+export const serverGetFlightIntelligence = async (origin: string, destination: string, travelDate: string): Promise<FlightOption[]> => {
+  const prompt = `Find the 3 best flight options from ${origin} to ${destination} around ${travelDate}. 
+  Provide:
+  1. A "Best Price" option.
+  2. A "Shortest Time" option.
+  3. A "Optimal Arrival" option (arriving before 10 AM local time).
+  
+  For each, return:
+  - Carrier name
+  - Route details (including IATA codes)
+  - Estimated price
+  - Duration
+  - A valid Google Flights search URL.
+  
+  Output JSON format: { "options": [{ "type": "...", "route": "...", "carrier": "...", "estimatedPrice": "...", "duration": "...", "searchUrl": "..." }] }`;
+
+  const response = await ai.models.generateContent({
+    model: STRATEGIC_MODEL,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          options: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING },
+                route: { type: Type.STRING },
+                carrier: { type: Type.STRING },
+                estimatedPrice: { type: Type.STRING },
+                duration: { type: Type.STRING },
+                searchUrl: { type: Type.STRING }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const data = JSON.parse(response.text || '{"options": []}');
+  return data.options || [];
 };
 
 export const serverAnalyzePriority = async (leadData: Lead, memoryContext: string): Promise<any> => {

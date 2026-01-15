@@ -59,6 +59,24 @@ export interface Reminder {
   isCompleted: boolean;
 }
 
+export interface Hotel {
+  name: string;
+  description: string;
+  rating: string;
+  googleHotelsUrl: string;
+  bookingUrl: string;
+  directionsUrl: string;
+}
+
+export interface FlightOption {
+  type: 'Best Price' | 'Shortest Time' | 'Optimal Arrival';
+  route: string;
+  carrier: string;
+  estimatedPrice: string;
+  duration: string;
+  searchUrl: string;
+}
+
 export interface Lead {
   id: string;
   firstName: string;

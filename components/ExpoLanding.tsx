@@ -29,14 +29,20 @@ import {
   Terminal,
   BrainCircuit,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Plane,
+  PlaneTakeoff,
+  Timer,
+  CreditCard,
+  Search
 } from 'lucide-react';
 import { WALID_IDENTITY } from '../services/identityService';
-import { EquineEvent, Reminder, Lead, DealStage, ARAB_MIDDLE_EAST_COUNTRIES } from '../types';
+import { EquineEvent, Reminder, Lead, DealStage, ARAB_MIDDLE_EAST_COUNTRIES, FlightOption } from '../types';
 import { eventService } from '../services/eventService';
 import { leadService } from '../services/leadService';
 import { novaOrchestrator } from '../services/novaOrchestrator';
 import { saveMemory } from '../services/memoryService';
+import { serverGetFlightIntelligence } from '../services/aiService';
 
 const ExpoLanding: React.FC = () => {
   const [events, setEvents] = useState<EquineEvent[]>([]);
@@ -47,6 +53,14 @@ const ExpoLanding: React.FC = () => {
   const [savingOrganizerId, setSavingOrganizerId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [thoughtStream, setThoughtStream] = useState<string[]>([]);
+  
+  // Flight Deck State
+  const [showFlightDeck, setShowFlightDeck] = useState(false);
+  const [isFindingFlights, setIsFindingFlights] = useState(false);
+  const [flightOptions, setFlightOptions] = useState<FlightOption[]>([]);
+  const [activeFlightEvent, setActiveFlightEvent] = useState<EquineEvent | null>(null);
+  const [travelDate, setTravelDate] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     type: 'Event Check-in',
     date: new Date().toISOString().split('T')[0],
@@ -60,6 +74,22 @@ const ExpoLanding: React.FC = () => {
   const loadEvents = async () => {
     const data = await eventService.getAllEvents();
     setEvents(data);
+  };
+
+  const handleFindFlights = async (event: EquineEvent) => {
+    setActiveFlightEvent(event);
+    setShowFlightDeck(true);
+    setIsFindingFlights(true);
+    const origin = WALID_IDENTITY.location;
+    const destination = `${event.city}, ${event.country}`;
+    try {
+      const flights = await serverGetFlightIntelligence(origin, destination, travelDate);
+      setFlightOptions(flights);
+    } catch (error) {
+      console.error("Failed to find flights:", error);
+    } finally {
+      setIsFindingFlights(false);
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -125,7 +155,7 @@ const ExpoLanding: React.FC = () => {
     const newLead: Lead = {
       id: `lead-expo-${event.id}`,
       firstName: event.organizer,
-      lastName: '(Organizer)',
+      lastName: `(${event.country})`,
       title: 'Event Organizer',
       roleType: 'Decision Maker',
       companyId: event.id,
@@ -216,14 +246,110 @@ const ExpoLanding: React.FC = () => {
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, reminders: updated } : e));
   };
 
-  const formatUrl = (url?: string): string => {
-    if (!url) return '#';
-    if (url.startsWith('http')) return url;
-    return `https://${url}`;
-  };
-
   return (
     <div className="min-h-full bg-white flex flex-col animate-in fade-in duration-700 relative selection:bg-indigo-500/30">
+      
+      {/* FLIGHT DECK MODAL */}
+      {showFlightDeck && (
+        <div className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
+           <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl max-w-5xl w-full relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-12 opacity-5">
+               <Plane className="w-80 h-80 text-white" />
+             </div>
+             
+             <div className="flex items-center justify-between mb-10 relative z-10">
+               <div className="flex items-center gap-5">
+                 <div className="p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-500/20">
+                    <PlaneTakeoff className="w-7 h-7 text-white" />
+                 </div>
+                 <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-none mb-1.5">Event Flight Deck</h3>
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Global Travel Corridors for {activeFlightEvent?.name}</span>
+                 </div>
+               </div>
+               <button onClick={() => setShowFlightDeck(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all">
+                  <X className="w-6 h-6 text-white" />
+               </button>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 mb-10">
+                <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                   <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Origin Node</span>
+                   <p className="text-sm font-black text-white">{WALID_IDENTITY.location}</p>
+                </div>
+                <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                   <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Destination Hub</span>
+                   <p className="text-sm font-black text-white">{activeFlightEvent?.city}, {activeFlightEvent?.country}</p>
+                </div>
+                <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                   <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2 block">Planned Date</span>
+                   <input 
+                     type="date" 
+                     value={travelDate} 
+                     onChange={(e) => setTravelDate(e.target.value)} 
+                     className="bg-transparent text-white text-sm font-black outline-none w-full cursor-pointer"
+                   />
+                </div>
+             </div>
+
+             {isFindingFlights ? (
+               <div className="flex flex-col items-center justify-center py-24 gap-6 opacity-50">
+                  <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
+                  <p className="text-[11px] font-black uppercase tracking-widest text-indigo-400">Negotiating Regional Air Corridors...</p>
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                  {flightOptions.map((option, idx) => (
+                    <div key={idx} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm flex flex-col hover:-translate-y-2 transition-all group">
+                       <div className="flex justify-between items-start mb-8">
+                         <div className="px-4 py-1.5 bg-indigo-50 text-[10px] font-black uppercase tracking-widest text-indigo-600 rounded-full border border-indigo-100 shadow-sm">
+                           {option.type}
+                         </div>
+                         <Radar className="w-5 h-5 text-slate-200 group-hover:text-indigo-400 transition-colors" />
+                       </div>
+                       
+                       <div className="mb-8">
+                         <h4 className="text-xl font-black text-slate-900 leading-tight mb-2">{option.route}</h4>
+                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">{option.carrier}</p>
+                       </div>
+
+                       <div className="space-y-5 mb-10">
+                         <div className="flex items-center justify-between text-[13px] font-black">
+                            <div className="flex items-center gap-3 text-slate-500">
+                               <Timer className="w-5 h-5" />
+                               <span>{option.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-emerald-600">
+                               <CreditCard className="w-5 h-5" />
+                               <span>{option.estimatedPrice}</span>
+                            </div>
+                         </div>
+                       </div>
+
+                       <a 
+                         href={option.searchUrl} 
+                         target="_blank" 
+                         className="w-full py-5 bg-slate-900 text-white rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all text-center flex items-center justify-center gap-4 shadow-2xl shadow-slate-900/10 active:scale-95"
+                       >
+                         Secure Booking <ExternalLink className="w-4 h-4" />
+                       </a>
+                    </div>
+                  ))}
+                  {flightOptions.length === 0 && !isFindingFlights && (
+                    <button 
+                      onClick={() => handleFindFlights(activeFlightEvent!)}
+                      className="col-span-3 py-16 border-2 border-dashed border-white/10 rounded-[4rem] text-slate-500 hover:text-white hover:border-white/30 transition-all flex flex-col items-center gap-6"
+                    >
+                      <Search className="w-10 h-10" />
+                      <span className="text-sm font-black uppercase tracking-[0.4em]">Initialize 2026 Flight Protocol</span>
+                    </button>
+                  )}
+               </div>
+             )}
+           </div>
+        </div>
+      )}
+
       {/* BIG BRAIN SCOPE OVERLAY */}
       {isRefreshing && (
         <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-8">
@@ -435,12 +561,20 @@ const ExpoLanding: React.FC = () => {
                     {savingOrganizerId === ev.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
                     Promote Organizer
                   </button>
-                  <button 
-                    onClick={() => setActiveReminderEventId(ev.id)}
-                    className="w-full py-4 bg-white border border-slate-200 text-slate-400 text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
-                  >
-                    <Bell className="w-4 h-4" /> Manage Intents
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => handleFindFlights(ev)}
+                      className="py-4 bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-[1.5rem] hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plane className="w-4 h-4" /> Flights
+                    </button>
+                    <button 
+                      onClick={() => setActiveReminderEventId(ev.id)}
+                      className="py-4 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-[1.5rem] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Bell className="w-4 h-4" /> Intents
+                    </button>
+                  </div>
                 </div>
 
                 {activeReminderEventId === ev.id && (

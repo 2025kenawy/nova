@@ -28,7 +28,8 @@ import {
   Save,
   Terminal,
   BrainCircuit,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 import { WALID_IDENTITY } from '../services/identityService';
 import { EquineEvent, Reminder, Lead, DealStage, ARAB_MIDDLE_EAST_COUNTRIES } from '../types';
@@ -79,10 +80,12 @@ const ExpoLanding: React.FC = () => {
   const handleDiscovery = async () => {
     setIsRefreshing(true);
     setThoughtStream([
-      "Waking Strategic Big Brain...",
-      "Mapping 2026 Arab Regional Calendar...",
-      "Scanning GCC Tournament Registries...",
-      "Applying Strict Geographic Filters..."
+      "Activating Strategic Intelligence Core (Gemini 3 Pro)...",
+      "Requesting exactly 33 high-value Arab Market Events...",
+      "Geographic Whitelist: 9 Middle Eastern Nations...",
+      "Vertical Lockdown: Vetting Horse-Industry focus...",
+      "Analyzing Event Authority and Organizing Commitees...",
+      "Synthesizing 2026 Equestrian Calendar..."
     ]);
 
     try {
@@ -90,7 +93,7 @@ const ExpoLanding: React.FC = () => {
       setEvents(discovered);
       setFeedback({ message: `Big Brain identified ${discovered.length} regional events.`, type: 'success' });
     } catch (error) {
-      setFeedback({ message: "Discovery engine recalibration required.", type: 'error' });
+      setFeedback({ message: "Intelligence core recalibration required.", type: 'error' });
     } finally {
       setIsRefreshing(false);
       setThoughtStream([]);
@@ -132,7 +135,6 @@ const ExpoLanding: React.FC = () => {
       linkedin: event.linkedin || '',
       status: 'SAVED',
       dealStage: 'Discovery' as DealStage,
-      // Fixed: changed 'Competition' to 'Racing & Competition' to match HorseCategory union type.
       horseCategory: 'Racing & Competition',
       horseSubCategory: 'Racing Event',
       discoveredAt: new Date().toISOString(),
@@ -221,8 +223,8 @@ const ExpoLanding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full bg-white flex flex-col animate-in fade-in duration-700 relative">
-      {/* SCOPE OVERLAY */}
+    <div className="min-h-full bg-white flex flex-col animate-in fade-in duration-700 relative selection:bg-indigo-500/30">
+      {/* BIG BRAIN SCOPE OVERLAY */}
       {isRefreshing && (
         <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-8">
            <div className="max-w-md w-full text-center space-y-10">
@@ -233,7 +235,7 @@ const ExpoLanding: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                 <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic">Activating Big Brain</h3>
+                 <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic">Big Brain Scan</h3>
                  <div className="bg-black/50 rounded-3xl p-8 border border-white/10 font-mono text-left space-y-3 overflow-hidden shadow-2xl">
                     {thoughtStream.map((t, i) => (
                       <div key={i} className="flex items-center gap-3 text-[11px] text-emerald-400 animate-in slide-in-from-left-4">
@@ -243,7 +245,7 @@ const ExpoLanding: React.FC = () => {
                     ))}
                     <div className="flex items-center gap-3 text-[11px] text-indigo-400">
                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                       <span className="animate-pulse font-black">Scanning Arab Market Registry...</span>
+                       <span className="animate-pulse font-black">Synthesizing 33 Regional Events...</span>
                     </div>
                  </div>
               </div>
@@ -294,37 +296,43 @@ const ExpoLanding: React.FC = () => {
         </div>
       )}
 
-      <section className="relative px-6 py-20 bg-slate-950 text-white overflow-hidden rounded-[3rem] mb-12 shadow-2xl">
+      <section className="relative px-6 py-24 bg-slate-950 text-white overflow-hidden rounded-[4rem] mb-12 shadow-[0_40px_100px_rgba(0,0,0,0.2)]">
         <div className="absolute top-0 right-0 p-12 opacity-10">
-          <Award className="w-64 h-64 text-indigo-400" />
+          <Award className="w-80 h-80 text-indigo-400" />
         </div>
-        <div className="relative z-10 max-w-2xl">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-indigo-600 rounded-lg shadow-lg">
+        <div className="relative z-10 max-w-2xl px-8">
+          <div className="flex items-center gap-4 mb-10">
+            <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400">Regional Intelligence Scope</span>
+            <div className="flex flex-col">
+               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 leading-none mb-1">Big Brain Intelligence</span>
+               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Arab Market Sovereign Node</span>
+            </div>
           </div>
-          <h1 className="text-5xl font-black tracking-tighter mb-6 leading-[0.9]">
+          <h1 className="text-6xl font-black tracking-tighter mb-8 leading-[0.85]">
             Arab Expo Hub <br/>
-            <span className="text-indigo-500 italic">2026 Discovery</span>
+            <span className="text-indigo-500 italic">2026 Registry</span>
           </h1>
-          <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-md mb-10">
-            Discovery is strictly locked to approved Arab & Middle East market nodes. Identifying elite equestrian decision makers across GCC and regional hubs.
+          <p className="text-slate-400 text-base font-medium leading-relaxed max-w-md mb-12">
+            Intelligence core is locked to Horse Industry segments in the 9 whitelisted Arab territories. Discovering 33 high-impact exhibitions using Gemini 3 Pro reasoning.
           </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-3 px-6 py-4 bg-white/5 border border-white/10 rounded-2xl w-fit">
-              <MapPin className="w-4 h-4 text-emerald-400" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-200 italic">Targeting {ARAB_MIDDLE_EAST_COUNTRIES.length} Regional Jurisdictions</span>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-4 px-8 py-5 bg-white/5 border border-white/10 rounded-[1.5rem] w-fit backdrop-blur-md">
+              <MapPin className="w-5 h-5 text-emerald-400" />
+              <div className="flex flex-col">
+                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-200 italic">Target: {ARAB_MIDDLE_EAST_COUNTRIES.length} Jurisdictions</span>
+                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Geographic Lockdown Active</span>
+              </div>
             </div>
             <button 
               onClick={handleDiscovery}
               disabled={isRefreshing}
-              className="flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 transition-all rounded-2xl w-fit shadow-2xl shadow-indigo-500/40 active:scale-95 disabled:opacity-50 border border-indigo-400/20"
+              className="flex items-center gap-4 px-10 py-5 bg-indigo-600 hover:bg-indigo-700 transition-all rounded-[1.5rem] w-fit shadow-[0_20px_50px_rgba(79,70,229,0.3)] active:scale-95 disabled:opacity-50 border border-indigo-400/20 group"
             >
-              <Radar className={`w-5 h-5 text-white ${isRefreshing ? 'animate-spin' : 'animate-pulse'}`} />
-              <span className="text-xs font-black uppercase tracking-widest text-white">
-                {isRefreshing ? 'Scanning Regional Market...' : 'Refresh 2026 Arab Events'}
+              <Radar className={`w-6 h-6 text-white ${isRefreshing ? 'animate-spin' : 'group-hover:animate-pulse'}`} />
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
+                {isRefreshing ? 'Scanning Hub...' : 'Discover 33 Events'}
               </span>
             </button>
           </div>
@@ -332,130 +340,158 @@ const ExpoLanding: React.FC = () => {
       </section>
 
       <section className="px-4 py-6 mb-12">
-        <div className="flex items-center justify-between mb-10 px-4">
-          <div className="flex items-center gap-6">
-            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Regional Event Registry</h2>
+        <div className="flex items-center justify-between mb-12 px-8">
+          <div className="flex items-center gap-8">
+            <div>
+               <h2 className="text-xl font-black text-slate-900 tracking-tighter uppercase italic leading-none mb-2">Regional Hub Registry</h2>
+               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Verified 2026 Equestrian Exhibitions</p>
+            </div>
             {events.length > 0 && (
               <button 
                 onClick={toggleSelectAll}
-                className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 hover:underline"
+                className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 hover:underline px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-100"
               >
                 {selectedEventIds.size === events.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                 {selectedEventIds.size === events.length ? 'Deselect All' : 'Select All Events'}
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/10 rounded-full shadow-lg">
-            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{events.length} Regional Nodes</span>
+          <div className="flex items-center gap-3 px-6 py-3 bg-slate-900 border border-white/10 rounded-2xl shadow-xl">
+            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+            <span className="text-[10px] font-black text-white uppercase tracking-widest">{events.length} Market Nodes Found</span>
           </div>
         </div>
         
         {events.length === 0 && !isRefreshing ? (
-          <div className="flex flex-col items-center justify-center p-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[4rem] text-center">
-            <Radar className="w-16 h-16 text-slate-200 mb-6 animate-pulse" />
-            <h3 className="text-2xl font-black text-slate-900 italic uppercase tracking-tighter">Regional Standby</h3>
-            <p className="text-slate-400 text-sm max-w-xs mt-3">Trigger the Arab & Middle East discovery scan to identify 2026 exhibitions.</p>
+          <div className="flex flex-col items-center justify-center p-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[5rem] text-center shadow-inner">
+            <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mb-10 shadow-lg">
+               <Radar className="w-12 h-12 text-slate-200 animate-pulse" />
+            </div>
+            <h3 className="text-3xl font-black text-slate-900 italic uppercase tracking-tighter">Big Brain Standby</h3>
+            <p className="text-slate-400 text-sm max-w-sm mt-4 font-medium leading-relaxed">
+              Trigger the Strategic Hub Discovery to populate the 2026 registry with 33 high-fidelity equestrian exhibitions across the Arab region.
+            </p>
+            <button 
+              onClick={handleDiscovery}
+              className="mt-10 px-10 py-4 bg-white border border-slate-200 text-slate-900 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all shadow-xl active:scale-95"
+            >
+               Initiate Big Brain Discovery
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 px-4">
             {events.map((ev) => (
               <div 
                 key={ev.id} 
-                className={`bg-white border rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all group flex flex-col relative ${selectedEventIds.has(ev.id) ? 'border-indigo-500 ring-4 ring-indigo-500/5' : 'border-slate-200'}`}
+                className={`bg-white border rounded-[3rem] p-10 shadow-sm hover:shadow-[0_30px_60px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all group flex flex-col relative ${selectedEventIds.has(ev.id) ? 'border-indigo-500 ring-[6px] ring-indigo-500/5' : 'border-slate-100'}`}
               >
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between mb-8">
+                  <div className="flex items-center gap-4">
                     <button 
                       onClick={() => toggleSelect(ev.id)}
-                      className={`shrink-0 transition-colors ${selectedEventIds.has(ev.id) ? 'text-indigo-600' : 'text-slate-300 hover:text-indigo-400'}`}
+                      className={`shrink-0 transition-all transform active:scale-125 ${selectedEventIds.has(ev.id) ? 'text-indigo-600 scale-110' : 'text-slate-200 hover:text-indigo-400'}`}
                     >
-                      {selectedEventIds.has(ev.id) ? <CheckSquare className="w-6 h-6" /> : <Square className="w-6 h-6" />}
+                      {selectedEventIds.has(ev.id) ? <CheckSquare className="w-7 h-7" /> : <Square className="w-7 h-7" />}
                     </button>
-                    <div className="p-2.5 bg-slate-950 rounded-2xl group-hover:bg-indigo-600 transition-colors shadow-lg">
-                      <Calendar className="w-5 h-5 text-indigo-400 group-hover:text-white" />
+                    <div className="p-3 bg-slate-950 rounded-2xl group-hover:bg-indigo-600 transition-colors shadow-2xl">
+                      <Calendar className="w-6 h-6 text-indigo-400 group-hover:text-white" />
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className="px-3 py-1 bg-emerald-50 text-[9px] font-black uppercase tracking-widest text-emerald-600 rounded-full border border-emerald-100">
+                    <span className="px-4 py-1.5 bg-emerald-50 text-[10px] font-black uppercase tracking-widest text-emerald-600 rounded-full border border-emerald-100 shadow-sm">
                       {ev.country}
                     </span>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-2 group-hover:text-indigo-600 transition-colors truncate">{ev.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{ev.month} 2026</span>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-3 group-hover:text-indigo-600 transition-colors truncate">{ev.name}</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                    <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">{ev.month} 2026</span>
                   </div>
                 </div>
                 
-                <div className="space-y-4 mb-8">
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl">
-                    <Building2 className="w-4 h-4 text-slate-400" />
+                <div className="space-y-5 mb-10">
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] group-hover:bg-white group-hover:border-indigo-100 transition-colors">
+                    <Building2 className="w-5 h-5 text-slate-300 group-hover:text-indigo-400" />
                     <div className="flex flex-col">
-                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Organizer</span>
-                      <span className="text-xs font-black text-slate-700 truncate">{ev.organizer}</span>
+                      <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Master Organizer</span>
+                      <span className="text-xs font-black text-slate-700 truncate max-w-[180px]">{ev.organizer}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="w-4 h-4 text-slate-300" />
-                    <span className="text-xs font-bold text-slate-500 italic">{ev.city}</span>
+                  <div className="flex items-center gap-4 px-2">
+                    <MapPin className="w-5 h-5 text-slate-200" />
+                    <span className="text-xs font-bold text-slate-400 italic">{ev.city} Hub</span>
                   </div>
                 </div>
 
-                <div className="mt-auto space-y-2">
+                <div className="mt-auto space-y-3">
                    <button 
                     onClick={() => handleSaveOrganizer(ev)}
                     disabled={savingOrganizerId === ev.id}
-                    className="w-full py-4 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50"
+                    className="w-full py-5 bg-slate-900 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-[1.5rem] hover:bg-indigo-600 transition-all flex items-center justify-center gap-4 shadow-xl active:scale-95 disabled:opacity-50"
                   >
-                    {savingOrganizerId === ev.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                    Save Organizer
+                    {savingOrganizerId === ev.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
+                    Promote Organizer
                   </button>
                   <button 
                     onClick={() => setActiveReminderEventId(ev.id)}
-                    className="w-full py-3 bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-white border border-slate-200 text-slate-400 text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
                   >
-                    <Bell className="w-3.5 h-3.5" /> Manage Reminders
+                    <Bell className="w-4 h-4" /> Manage Intents
                   </button>
                 </div>
 
                 {activeReminderEventId === ev.id && (
-                  <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm rounded-[2.5rem] p-8 flex flex-col animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between mb-6">
-                       <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Event Reminders</span>
-                       <button onClick={() => setActiveReminderEventId(null)}><X className="w-5 h-5 text-slate-400" /></button>
+                  <div className="absolute inset-0 z-20 bg-white/98 backdrop-blur-md rounded-[3rem] p-10 flex flex-col animate-in fade-in zoom-in-95 duration-300">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-3">
+                          <BrainCircuit className="w-5 h-5 text-indigo-600" />
+                          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-900">Event Intelligence</span>
+                       </div>
+                       <button onClick={() => setActiveReminderEventId(null)} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"><X className="w-5 h-5 text-slate-400" /></button>
                     </div>
-                    <div className="flex-1 overflow-y-auto space-y-4 mb-6 pr-1">
+                    <div className="flex-1 overflow-y-auto space-y-5 mb-8 pr-2">
                        {ev.reminders && ev.reminders.map(rem => (
-                         <div key={rem.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <button onClick={() => toggleReminderComplete(ev.id, rem.id)} className={`mt-0.5 w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${rem.isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
-                              {rem.isCompleted && <CheckCircle2 className="w-3 h-3" />}
+                         <div key={rem.id} className="flex items-start gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-white hover:border-indigo-100">
+                            <button onClick={() => toggleReminderComplete(ev.id, rem.id)} className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${rem.isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-white'}`}>
+                              {rem.isCompleted && <CheckCircle2 className="w-4 h-4" />}
                             </button>
                             <div className="min-w-0 flex-1">
-                               <p className={`text-[10px] font-bold leading-tight ${rem.isCompleted ? 'text-slate-300 line-through' : 'text-slate-700'}`}>{rem.note}</p>
-                               <span className="text-[8px] font-black text-slate-400 uppercase">{rem.date}</span>
+                               <p className={`text-[11px] font-bold leading-relaxed ${rem.isCompleted ? 'text-slate-300 line-through' : 'text-slate-700'}`}>{rem.note}</p>
+                               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-2 block">{rem.date} • {rem.type}</span>
                             </div>
-                            <button onClick={() => deleteReminder(ev.id, rem.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                            <button onClick={() => deleteReminder(ev.id, rem.id)} className="text-slate-300 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                          </div>
                        ))}
+                       {(!ev.reminders || ev.reminders.length === 0) && (
+                         <div className="h-full flex flex-col items-center justify-center text-center py-10 opacity-30">
+                            <Zap className="w-10 h-10 mb-4" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">No Active Intents</p>
+                         </div>
+                       )}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                       <div className="flex items-center gap-2 mb-2 px-1">
+                          <Plus className="w-3.5 h-3.5 text-indigo-500" />
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Record Strategic Note</span>
+                       </div>
                        <input 
                          type="text" 
-                         placeholder="New note..." 
+                         placeholder="Target node objective..." 
                          value={newReminder.note} 
                          onChange={(e) => setNewReminder({...newReminder, note: e.target.value})} 
-                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-bold outline-none"
+                         className="w-full bg-white border border-slate-200 rounded-xl px-5 py-3 text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
                        />
-                       <div className="flex gap-2">
+                       <div className="flex gap-3">
                          <input 
                            type="date" 
                            value={newReminder.date} 
                            onChange={(e) => setNewReminder({...newReminder, date: e.target.value})} 
-                           className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-bold outline-none"
+                           className="flex-1 bg-white border border-slate-200 rounded-xl px-5 py-3 text-[11px] font-bold outline-none"
                          />
-                         <button onClick={() => handleAddReminder(ev.id)} className="p-2 bg-indigo-600 text-white rounded-xl"><Plus className="w-5 h-5" /></button>
+                         <button onClick={() => handleAddReminder(ev.id)} className="px-6 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"><Plus className="w-6 h-6" /></button>
                        </div>
                     </div>
                   </div>
@@ -466,22 +502,31 @@ const ExpoLanding: React.FC = () => {
         )}
       </section>
 
-      <section className="bg-slate-50 rounded-[3rem] p-10 md:p-16 mb-20">
-        <div className="flex flex-col md:flex-row items-center gap-12">
-          <div className="w-48 h-48 bg-slate-900 rounded-[3rem] flex items-center justify-center text-white text-6xl font-black shadow-2xl shrink-0">
-            {WALID_IDENTITY.fullName[0]}
+      <section className="bg-slate-50 rounded-[4rem] p-12 md:p-20 mb-20 mx-4 border border-slate-100 shadow-inner">
+        <div className="flex flex-col md:flex-row items-center gap-16">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-indigo-500 rounded-[3.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="w-56 h-56 bg-slate-900 rounded-[3.5rem] flex items-center justify-center text-white text-7xl font-black shadow-2xl shrink-0 relative z-10 border border-white/5">
+              {WALID_IDENTITY.fullName[0]}
+            </div>
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">{WALID_IDENTITY.fullName}</h2>
-            <p className="text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-6">{WALID_IDENTITY.role} • {WALID_IDENTITY.companyName}</p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-               <div className="px-6 py-3 bg-white border border-slate-200 rounded-2xl flex items-center gap-3">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Secure Sovereign Identity</span>
+            <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-3 leading-none">{WALID_IDENTITY.fullName}</h2>
+            <p className="text-indigo-600 font-black text-[11px] uppercase tracking-[0.3em] mb-10">{WALID_IDENTITY.role} • {WALID_IDENTITY.companyName}</p>
+            <div className="flex flex-wrap justify-center md:justify-start gap-5">
+               <div className="px-8 py-4 bg-white border border-slate-200 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <div className="flex flex-col text-left">
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Secure Identity</span>
+                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest italic">Sovereign Encryption</span>
+                  </div>
                </div>
-               <div className="px-6 py-3 bg-white border border-slate-200 rounded-2xl flex items-center gap-3">
-                  <Zap className="w-4 h-4 text-indigo-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Enterprise CRM Linked</span>
+               <div className="px-8 py-4 bg-white border border-slate-200 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+                  <Zap className="w-5 h-5 text-indigo-500" />
+                  <div className="flex flex-col text-left">
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">CRM Link Active</span>
+                     <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest italic">Real-time Data Sync</span>
+                  </div>
                </div>
             </div>
           </div>

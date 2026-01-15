@@ -4,11 +4,12 @@ import {
   ArrowLeft, Linkedin, Mail, Phone, Globe, Calendar, Clock, Sparkles, 
   CheckCircle2, Ban, History, StickyNote, Target, Zap, ChevronRight,
   ShieldCheck, MoreHorizontal, User, Thermometer, Bell, Plus, X, Trash2,
-  Ticket, MessageCircle, Shield
+  Ticket, MessageCircle, Shield, MapPin, Loader2
 } from 'lucide-react';
 import { Lead, MemoryEntry, RelationshipTemperature, Reminder } from '../types';
 import { leadService } from '../services/leadService';
 import { getMemoriesForEntity, saveMemory } from '../services/memoryService';
+import { serverGetMapsDirections } from '../services/aiService';
 
 interface CrmDetailProps {
   leadId: string;
@@ -22,6 +23,7 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [whatsappPermission, setWhatsappPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMapping, setIsMapping] = useState(false);
   const [showAddReminder, setShowAddReminder] = useState(false);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     type: 'Follow-up',
@@ -46,6 +48,34 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     loadDossier();
   }, [leadId]);
 
+  const handleGetDirections = async () => {
+    if (!lead) return;
+    setIsMapping(true);
+    
+    const country = lead.lastName.replace(/[()]/g, '');
+    const company = lead.companyName;
+
+    const navigateToMap = (lat?: number, lng?: number) => {
+      serverGetMapsDirections(company, country, lat, lng).then(url => {
+        window.open(url, '_blank');
+        setIsMapping(false);
+      }).catch(() => {
+        const fallback = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${company}, ${country}`)}`;
+        window.open(fallback, '_blank');
+        setIsMapping(false);
+      });
+    };
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => navigateToMap(pos.coords.latitude, pos.coords.longitude),
+        () => navigateToMap()
+      );
+    } else {
+      navigateToMap();
+    }
+  };
+
   const handleSaveNotes = async () => {
     if (!lead) return;
     await leadService.updateLeadNotes(leadId, notes);
@@ -55,7 +85,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     if (!lead) return;
     await leadService.updateLeadWhatsApp(leadId, whatsappNumber, whatsappPermission);
     
-    // Added category: 'ENGAGEMENT' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'action',
@@ -76,7 +105,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
   const handleAction = async (action: 'done' | 'snooze' | 'ignore') => {
     if (!lead) return;
     const content = `Action: [${action.toUpperCase()}] for recommended step.`;
-    // Added category: 'ACTION' to fix missing property error
     const newMemory = await saveMemory({
       entityId: leadId,
       type: 'action',
@@ -91,14 +119,12 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     await leadService.updateLeadTemperature(leadId, temp);
     setLead(prev => prev ? { ...prev, temperature: temp } : null);
     
-    // Added category: 'SYSTEM' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'decision',
       category: 'SYSTEM',
       content: `Relationship temperature manually set to ${temp}.`
     });
-    // Refresh timeline
     const history = await getMemoriesForEntity(leadId);
     setTimeline(history);
   };
@@ -118,7 +144,6 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
     await leadService.updateLeadReminders(leadId, updatedReminders);
     setLead(prev => prev ? { ...prev, reminders: updatedReminders } : null);
     
-    // Added category: 'ACTION' to fix missing property error
     await saveMemory({
       entityId: leadId,
       type: 'action',
@@ -180,7 +205,7 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
         className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors group mb-4"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-[10px] font-black uppercase tracking-widest">Back to Intelligence Inbox</span>
+        <span className="text-[10px] font-black uppercase tracking-widest">Back to CRM List</span>
       </button>
 
       {/* SECTION 1 — HEADER (IDENTITY) */}
@@ -203,11 +228,21 @@ const CrmDetail: React.FC<CrmDetailProps> = ({ leadId, onBack }) => {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
                   {lead.horseCategory} • {lead.horseSubCategory || 'Equine Sector'}
                 </p>
-                {lead.source && (
-                  <div className="flex items-center gap-2 px-2 py-1 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded border border-indigo-100 w-fit">
-                    <Ticket className="w-3 h-3" /> {lead.source}
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  {lead.source && (
+                    <div className="flex items-center gap-2 px-2 py-1 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-600 rounded border border-indigo-100 w-fit">
+                      <Ticket className="w-3 h-3" /> {lead.source}
+                    </div>
+                  )}
+                  <button 
+                    onClick={handleGetDirections}
+                    disabled={isMapping}
+                    className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-[9px] font-black uppercase tracking-widest text-blue-600 rounded border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                  >
+                    {isMapping ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
+                    Get Directions
+                  </button>
+                </div>
               </div>
             </div>
           </div>

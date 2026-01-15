@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Loader2, Search, Filter, Mail, Phone, 
   Linkedin, ExternalLink, Globe, MoreHorizontal,
   ChevronRight, Thermometer, Calendar, Target,
   Star, MessageSquare, MessageCircle, Square, CheckSquare,
-  Trash2, Download, Check, CheckCircle2
+  Trash2, Download, Check, CheckCircle2, MapPin
 } from 'lucide-react';
 import { Lead, RelationshipTemperature } from '../types';
 import { leadService } from '../services/leadService';
 import { exportLeadsToCsv } from '../utils/exportUtils';
+import { serverGetMapsDirections } from '../services/aiService';
 
 interface CrmListProps {
   onSelectLead: (id: string) => void;
@@ -19,6 +21,7 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isBulkOperating, setIsBulkOperating] = useState(false);
+  const [mappingId, setMappingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -31,6 +34,34 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
     const data = await leadService.getCrmContacts();
     setContacts(data);
     setIsLoading(false);
+  };
+
+  const handleGetDirections = async (e: React.MouseEvent, contact: Lead) => {
+    e.stopPropagation();
+    setMappingId(contact.id);
+    
+    const country = contact.lastName.replace(/[()]/g, '');
+    const company = contact.companyName;
+
+    const navigateToMap = (lat?: number, lng?: number) => {
+      serverGetMapsDirections(company, country, lat, lng).then(url => {
+        window.open(url, '_blank');
+        setMappingId(null);
+      }).catch(() => {
+        const fallback = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${company}, ${country}`)}`;
+        window.open(fallback, '_blank');
+        setMappingId(null);
+      });
+    };
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => navigateToMap(pos.coords.latitude, pos.coords.longitude),
+        () => navigateToMap()
+      );
+    } else {
+      navigateToMap();
+    }
   };
 
   const toggleSelect = (e: React.MouseEvent, id: string) => {
@@ -52,7 +83,6 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
   const handleBulkDelete = async () => {
     if (!window.confirm(`Are you sure you want to remove ${selectedIds.size} contacts from CRM?`)) return;
     setIsBulkOperating(true);
-    // FIX: Explicitly typing the array to resolve unknown[] vs string[] type mismatch on line 57
     const idsToRemove: string[] = Array.from(selectedIds);
     await leadService.bulkRemoveFromCrm(idsToRemove);
     setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
@@ -233,6 +263,13 @@ const CrmList: React.FC<CrmListProps> = ({ onSelectLead }) => {
                   View Dossier <ChevronRight className="w-3.5 h-3.5" />
                 </button>
                 <div className="flex items-center gap-1">
+                  <button 
+                    onClick={(e) => handleGetDirections(e, contact)}
+                    className={`p-3 border rounded-xl shadow-sm transition-all ${mappingId === contact.id ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-600 hover:text-white'}`}
+                    title="Get Directions"
+                  >
+                    {mappingId === contact.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                  </button>
                   {contact.whatsapp && (
                     <button 
                       onClick={(e) => startWhatsApp(e, contact.whatsapp)}
